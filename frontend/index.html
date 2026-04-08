@@ -142,12 +142,9 @@ nav{display:flex;align-items:center;height:48px;background:var(--bg2);border-bot
 .edlbtn{width:100%;padding:7px;border-radius:6px;background:var(--bg3);border:1px solid var(--bd);color:var(--tx);font-size:11px;cursor:pointer;font-weight:500}
 .sub-lbl{font-size:10px;color:var(--mu);margin-bottom:5px;margin-top:6px;display:block}
 .sub-lbl:first-child{margin-top:0}
-.lg9{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-bottom:5px}
-.lgb{padding:5px 2px;border:1px solid var(--bd);border-radius:4px;background:var(--bg3);color:var(--mu2);font-size:8px;cursor:pointer;text-align:center;transition:all .15s}
-.lgb.on{border-color:var(--ac);color:var(--ac);background:var(--ac3)}
-.cpick{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
-.cdot{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0}
-.cdot.on{border-color:#fff;transform:scale(1.15)}
+.cpal{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.cdot{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .150s;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.1)}
+.cdot.on{border-color:#fff;transform:scale(1.1)}
 .cdot.nd{background:var(--bg3);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--mu2)}
 .color-row{display:flex;gap:5px;margin-bottom:8px;align-items:center}
 .color-preview{width:22px;height:22px;border-radius:4px;border:1px solid var(--bd);flex-shrink:0;cursor:pointer}
@@ -888,9 +885,8 @@ function timeAgo(iso) {
 // ─── SLIDES ─────────────────────────────────────────────────────────────
 function getGridCSS(sc) {
   if (!sc.gridOn || sc.gridType === 'none') return '';
-  const op = (sc.overlayOp || 10) / 100;
-  const rgba = `rgba(255,255,255,${op * 0.3})`;
-  const p = { quad:`repeating-linear-gradient(${rgba} 0 1px,transparent 1px 20px),repeating-linear-gradient(90deg,${rgba} 0 1px,transparent 1px 20px)`, dot:`radial-gradient(circle,${rgba} 1px,transparent 1px)`, hz:`repeating-linear-gradient(${rgba} 0 1px,transparent 1px 18px)`, diag:`repeating-linear-gradient(45deg,${rgba} 0 1px,transparent 1px 16px)`, xd:`repeating-linear-gradient(45deg,${rgba} 0 1px,transparent 1px 12px),repeating-linear-gradient(-45deg,${rgba} 0 1px,transparent 1px 12px)` };
+  const rgba = `rgba(255,255,255,0.2)`;
+  const p = { quad:`repeating-linear-gradient(${rgba} 0 1px,transparent 1px 20px),repeating-linear-gradient(90deg,${rgba} 0 1px,transparent 1px 20px)`, dot:`radial-gradient(circle,${rgba} 2px,transparent 1px)`, hz:`repeating-linear-gradient(${rgba} 0 1px,transparent 1px 18px)`, diag:`repeating-linear-gradient(45deg,${rgba} 0 1px,transparent 1px 16px)`, xd:`repeating-linear-gradient(45deg,${rgba} 0 1px,transparent 1px 12px),repeating-linear-gradient(-45deg,${rgba} 0 1px,transparent 1px 12px)` };
   return p[sc.gridType] || '';
 }
 function getSlideBg(s) {
@@ -900,8 +896,8 @@ function getSlideBg(s) {
   return '#0f0520';
 }
 function getSlideHTML(s, i, active) {
-  // sc = this slide's config
   const sc = s.cfg || defaultSlideCfg();
+  const isProfile = globalCfg.style === 'profile';
   if (sc.font) loadFont(sc.font);
   const ph = sc.paddingH;
   const pv = sc.paddingV;
@@ -919,7 +915,7 @@ function getSlideHTML(s, i, active) {
   const title = s.t;
   const sub = s.b;
 
-  const logoHTML = globalCfg.logoOn ? `<div style="display:flex;justify-content:${jcLogo};padding:${mg/2}px ${mg}px;width:100%"><div style="height:${ls}px;padding:0 12px;background:rgba(255,255,255,.15);border-radius:6px;display:flex;align-items:center;font-size:${Math.max(10,Math.round(ls*.38))}px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:.05em">LOGO</div></div>` : '';
+  const logoHTML = globalCfg.logoOn ? `<div style="display:flex;justify-content:${jcLogo};padding:${mg/2}px ${mg}px;width:100%"><div style="height:${ls}px;${isProfile?'width:'+ls+'px;border-radius:50%':'padding:0 12px;border-radius:6px'};background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:${Math.max(10,Math.round(ls*.38))}px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:.05em;border:1px solid rgba(255,255,255,0.2)">${isProfile?'?':'LOGO'}</div></div>` : '';
   const ctaHTML = sc.ctaOn ? `<div style="display:flex;justify-content:${jcCTA};margin-top:14px"><div style="font-size:12px;padding:6px 14px;border-radius:6px;font-weight:700;background:${sc.ctaStyle==='solid'?sc.ctaColor:'transparent'};border:${sc.ctaStyle==='outline'?'1px solid '+sc.ctaColor:'none'};color:${sc.ctaStyle==='outline'?sc.ctaColor:'#fff'}">${sc.ctaText}</div></div>` : '';
   const loadingTag = sc.imageLoading ? `<div style="position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)"><svg width="36" height="36" viewBox="0 0 50 50" style="animation:spin 1s linear infinite"><circle cx="25" cy="25" r="20" fill="none" stroke="#a78bfa" stroke-width="4" stroke-dasharray="60 40"/></svg></div>` : '';
 
@@ -927,7 +923,7 @@ function getSlideHTML(s, i, active) {
   let imgHTML = '';
   if (sc.imageUrl && sc.imgMode === 'bg') {
     const crossAttr = sc.imageUrl.startsWith('data:') ? '' : 'crossorigin="anonymous"';
-    imgHTML = `<img class="s-img" src="${sc.imageUrl}" ${crossAttr} style="object-fit:cover;object-position:${sc.imgX}% ${sc.imgY}%;transform-origin:center;transform:scale(${sc.imgZ/100})" onerror="this.style.display='none'">`;
+    imgHTML = `<img class="s-img" src="${sc.imageUrl}" ${crossAttr} style="object-fit:cover;object-position:${sc.imgX}% ${sc.imgY}%;transform-origin:center;transform:scale(${sc.imgZ/100});z-index:0;position:absolute;inset:0" onerror="this.style.display='none'">`;
   } else if (sc.imageUrl && sc.imgMode !== 'bg') {
     const crossAttr = sc.imageUrl.startsWith('data:') ? '' : 'crossorigin="anonymous"';
     const ratio = sc.imgRatio === '16:9' ? '56.25%' : '100%'; // percent of width
@@ -964,23 +960,23 @@ function getSlideHTML(s, i, active) {
     <div class="sf" style="background:${bg}">
       ${imgHTML}
       ${loadingTag}
-      ${gridCSS?`<div style="position:absolute;inset:0;background-image:${gridCSS};background-size:${sc.gridType==='dot'?'16px 16px':'auto'};pointer-events:none;z-index:1"></div>`:''}
+      ${gridCSS?`<div style="position:absolute;inset:0;background-image:${gridCSS};background-size:${sc.gridType==='dot'?'20px 20px':'auto'};pointer-events:none;z-index:1"></div>`:''}
       ${overlayCSS !== 'none' ? `<div style="position:absolute;inset:0;background:${overlayCSS};pointer-events:none;z-index:2"></div>` : ''}
-      <div style="position:absolute;top:0;left:0;right:0;z-index:4">${globalCfg.logoOn&&globalCfg.logoPos==='top'?logoHTML:''}</div>
-      ${globalCfg.handleOn ? `<div style="position:absolute;top:14px;left:18px;font-size:11px;color:rgba(255,255,255,.6);font-weight:500;z-index:4">${globalCfg.handle||'@seuarroba'}</div>` : ''}
-      <div class="s-content" style="z-index:3; justify-content:${contentJC}; align-items:${contentAI};">
+      <div style="position:absolute;top:0;left:0;right:0;z-index:5">${globalCfg.logoOn&&globalCfg.logoPos==='top'?logoHTML:''}</div>
+      ${globalCfg.handleOn ? `<div style="position:absolute;top:14px;left:18px;font-size:11px;color:rgba(255,255,255,.6);font-weight:500;z-index:5">${globalCfg.handle||'@seuarroba'}</div>` : ''}
+      <div class="s-content" style="z-index:${isProfile?4:3}; justify-content:${contentJC}; align-items:${contentAI};">
         <div style="padding:${pv}px ${ph}px; margin:${mg/2}px; text-align:${sc.textAlign}; width:100%">
-          <div class="s-ttl" style="color:${sc.titleColor}; ${tStyle}">${title}</div>
+          <div class="s-ttl" style="color:${sc.titleColor}; ${tStyle} font-size:${isProfile?'28px':'22px'};">${title}</div>
           <div class="s-sub" style="color:${sc.subColor}; ${bStyle}">${sub}</div>
           ${ctaHTML}
         </div>
       </div>
       <div style="position:absolute;bottom:0;left:0;right:0;z-index:4">
         ${globalCfg.logoOn&&globalCfg.logoPos==='bottom'?logoHTML:''}
-        <div class="s-ft" style="padding:10px ${mg}px">
-          <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,.5)">${globalCfg.brandOn ? globalCfg.brand : ''}</span>
+        <div class="s-ft" style="padding:10px ${mg}px;${isProfile?'justify-content:center':''}">
+          ${!isProfile?`<span style="font-size:10px;font-weight:500;color:rgba(255,255,255,.5)">${globalCfg.brandOn ? globalCfg.brand : ''}</span>`:''}
           <div class="s-dots">${slides.map((_,j)=>`<div class="sd${j===i?' on':''}"></div>`).join('')}</div>
-          <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,.5)">arrasta →</span>
+          ${!isProfile?`<span style="font-size:10px;font-weight:500;color:rgba(255,255,255,.5)">arrasta →</span>`:''}
         </div>
       </div>
       <button class="s-del" onclick="event.stopPropagation();rmSl(${i})">✕</button>
@@ -1114,15 +1110,21 @@ function renderEditorSide() {
   <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Espaçamento & Layout</span><span class="sec-chev open">▾</span></div>
   <div class="sec-body open">
     <div class="row"><span class="row-lbl">Padding Horiz.</span><span class="row-val">${cfg.paddingH}px</span></div>
-    <input type="range" class="sl" min="10" max="80" value="${cfg.paddingH}" oninput="cfg.paddingH=parseInt(this.value);updateSlides()">
+    <input type="range" class="sl" min="0" max="150" value="${cfg.paddingH}" oninput="cfg.paddingH=parseInt(this.value);updateSlides()">
     <div class="row"><span class="row-lbl">Padding Vert.</span><span class="row-val">${cfg.paddingV}px</span></div>
-    <input type="range" class="sl" min="10" max="80" value="${cfg.paddingV}" oninput="cfg.paddingV=parseInt(this.value);updateSlides()">
+    <input type="range" class="sl" min="0" max="150" value="${cfg.paddingV}" oninput="cfg.paddingV=parseInt(this.value);updateSlides()">
     <div class="row"><span class="row-lbl">Margem Geral</span><span class="row-val">${cfg.margin}px</span></div>
-    <input type="range" class="sl" min="0" max="60" value="${cfg.margin}" oninput="cfg.margin=parseInt(this.value);updateSlides()">
+    <input type="range" class="sl" min="0" max="100" value="${cfg.margin}" oninput="cfg.margin=parseInt(this.value);updateSlides()">
   </div></div>
 
   <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Imagem do Slide</span><span class="sec-chev open">▾</span></div>
   <div class="sec-body open">
+    ${cfg.imageUrl ? `
+      <div style="margin-bottom:10px;position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--bd)">
+        <img src="${cfg.imageUrl}" style="width:100%;height:80px;object-fit:cover">
+        <button class="s-del" style="display:flex" onclick="cfg.imageUrl=null;updateSlides();renderEditorSide()">✕</button>
+      </div>
+    ` : ''}
     <button class="esm" onclick="generateSlideImage()">✦ Gerar imagem com IA</button>
     <div class="eup" onclick="document.getElementById('up-real').click()">Upload de Imagem<br><span style="font-size:9px">Clique para selecionar</span></div>
     <input type="file" id="up-real" style="display:none" accept="image/*" onchange="handleUpload(this)">
@@ -1194,8 +1196,8 @@ function renderEditorSide() {
     <div class="tg-row" style="margin-top:10px"><span class="tg-lbl">Grade de Fundo</span><div class="tg${cfg.gridOn?' on':''}" onclick="toggleGrid()"></div></div>
   </div></div>
 
-  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Config Logo</span><span class="sec-chev">▾</span></div>
-  <div class="sec-body">
+  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Config Logo</span><span class="sec-chev open">▾</span></div>
+  <div class="sec-body open">
     <div class="tg-row"><span class="tg-lbl">Mostrar Logo</span><div class="tg${globalCfg.logoOn?' on':''}" onclick="toggleLogo()"></div></div>
     <div style="display:${globalCfg.logoOn?'block':'none'}">
        <span class="sub-lbl">Posição Vertical</span>
@@ -1203,14 +1205,14 @@ function renderEditorSide() {
           <button class="eh${globalCfg.logoPos==='top'?' on':''}" onclick="globalCfg.logoPos='top';updateSlides();renderEditorSide()">Topo</button>
           <button class="eh${globalCfg.logoPos==='bottom'?' on':''}" onclick="globalCfg.logoPos='bottom';updateSlides();renderEditorSide()">Base</button>
        </div>
-       <span class="sub-lbl">Alinhamento</span>
+       <span class="sub-lbl">Alinhamento Horizontal</span>
        <div class="e3" style="margin-bottom:10px">
         <button class="eh${globalCfg.logoAlign==='left'?' on':''}" onclick="globalCfg.logoAlign='left';updateSlides();renderEditorSide()">Esq.</button>
         <button class="eh${globalCfg.logoAlign==='center'?' on':''}" onclick="globalCfg.logoAlign='center';updateSlides();renderEditorSide()">Meio</button>
         <button class="eh${globalCfg.logoAlign==='right'?' on':''}" onclick="globalCfg.logoAlign='right';updateSlides();renderEditorSide()">Dir.</button>
       </div>
       <div class="row"><span class="row-lbl">Tamanho</span><span class="row-val">${globalCfg.logoSize}px</span></div>
-      <input type="range" class="sl" min="14" max="60" value="${globalCfg.logoSize}" oninput="globalCfg.logoSize=parseInt(this.value);updateSlides();renderEditorSide()">
+      <input type="range" class="sl" min="14" max="100" value="${globalCfg.logoSize}" oninput="globalCfg.logoSize=parseInt(this.value);updateSlides();renderEditorSide()">
     </div>
   </div></div>
 
@@ -1345,9 +1347,10 @@ function setImgMode(mode) {
 }
 
 async function generateSlideImage() {
-  const prompt = slides[curSl]?.t || '';
-  const fullPrompt = `${prompt}, professional photography, high quality, clean background`;
-  slides[curSl].imageLoading = true;
+  const customPrompt = prompt('O que deseja gerar nesta imagem?', slides[curSl]?.t || '');
+  if (!customPrompt) return;
+  const fullPrompt = `${customPrompt}, professional photography, high quality, clean background`;
+  cfg.imageLoading = true;
   updateSlides();
   toast('⏳ Gerando imagem com IA...');
   const seed = Math.floor(Math.random() * 999999);
@@ -1358,10 +1361,11 @@ async function generateSlideImage() {
     cfg.imageUrl = url;
     cfg.imageLoading = false;
     updateSlides();
+    renderEditorSide();
     toast('✅ Imagem gerada!');
   };
   img.onerror = () => {
-    slides[curSl].imageLoading = false;
+    cfg.imageLoading = false;
     updateSlides();
     toast('❌ Erro ao gerar imagem.', true);
   };
