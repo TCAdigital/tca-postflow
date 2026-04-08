@@ -76,12 +76,12 @@ nav{display:flex;align-items:center;height:48px;background:var(--bg2);border-bot
 .sec-l{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mu)}
 .sec-a{font-size:11px;color:var(--mu2);cursor:pointer}
 .sec-a:hover{color:var(--ac)}
-.cc-row{display:flex;gap:16px;margin-top:14px;min-height:220px;overflow-x:auto;padding-bottom:8px;align-items:stretch}
+.cc-row{display:flex;gap:16px;margin-top:14px;min-height:260px;overflow-x:auto;padding-bottom:12px;align-items:stretch}
 .hist-card{transition:transform .2s,border-color .2s;background:var(--bg2)}
 .hist-card:hover{transform:translateY(-4px);border-color:var(--ac)}
-.cc-row::-webkit-scrollbar{height:6px}
+.cc-row::-webkit-scrollbar{height:7px}
 .cc-row::-webkit-scrollbar-thumb{background:var(--bd);border-radius:6px}
-.ccard{flex:0 0 260px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .18s}
+.ccard{flex:0 0 320px;background:var(--bg2);border:1px solid var(--bd);border-radius:12px;overflow:hidden;cursor:pointer;transition:all .18s}
 .ccard:hover{border-color:#3d2a6e}
 .cth{height:128px;position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:8px}
 .cth-chips{display:flex;justify-content:space-between}
@@ -175,9 +175,10 @@ nav{display:flex;align-items:center;height:48px;background:var(--bg2);border-bot
 .tbb:hover{background:var(--bg4)}
 .tbg{padding:6px 12px;border-radius:6px;background:var(--ac2);border:none;color:#fff;font-size:11px;cursor:pointer;font-weight:500}
 .tbg:disabled{opacity:.5;cursor:wait}
-.slides-area{flex:1;overflow-x:auto;display:flex;align-items:center;gap:14px;padding:20px 24px}
-.slides-area::-webkit-scrollbar{height:4px}
-.slides-area::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.slides-area{flex:1;overflow-x:auto;display:flex;align-items:center;gap:14px;padding:20px 24px 42px}
+.slides-area::-webkit-scrollbar{height:10px}
+.slides-area::-webkit-scrollbar-track{background:var(--bg3);border-radius:10px}
+.slides-area::-webkit-scrollbar-thumb{background:#3a3a3a;border-radius:10px}
 .sw{flex-shrink:0;cursor:pointer}
 .sf{border-radius:14px;overflow:hidden;border:2px solid var(--bd);position:relative;transition:border .18s;width:320px;height:400px}
 .sf:hover{border-color:#444}.sw.on .sf{border-color:var(--ac)}
@@ -839,10 +840,10 @@ function renderHistory() {
     if (h.slides && h.slides[0]) {
       const s0 = h.slides[0];
       // Fake global for preview if needed, but getSlideHTML uses globalCfg
-      previewHTML = `<div style="transform:scale(0.5);transform-origin:top left;width:320px;height:400px;pointer-events:none;border-radius:14px;overflow:hidden">${getSlideHTML(s0, 0, false)}</div>`;
+      previewHTML = `<div style="transform:scale(0.62);transform-origin:top left;width:320px;height:400px;pointer-events:none;border-radius:14px;overflow:hidden">${getSlideHTML(s0, 0, false)}</div>`;
     }
     return `<div class="ccard hist-card" onclick="loadHistory(${h.id})">
-      <div class="cth" style="height:220px;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden">
+      <div class="cth" style="height:260px;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden">
         ${previewHTML}
       </div>
       <div class="cbody">
