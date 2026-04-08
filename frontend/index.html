@@ -929,7 +929,7 @@ function getSlideHTML(s, i, active) {
     imgHTML = `<img class="s-img" src="${sc.imageUrl}" ${crossAttr} style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:${sc.imgX}% ${sc.imgY}%;transform:scale(${sc.imgZ/100});transform-origin:center;z-index:0" onerror="this.style.display='none'">`;
   } else if (sc.imageUrl && sc.imgMode !== 'bg') {
     const crossAttr = sc.imageUrl.startsWith('data:') ? '' : 'crossorigin="anonymous"';
-    const ratio = sc.imgRatio === '16:9' ? '56.25%' : '100%'; // percent of width
+    const ratio = sc.imgRatio === '16:9' ? '56.25%' : '125%'; // 4:5 is 125% height relative to width
     const jcMap = { top: 'flex-start', center: 'center', bottom: 'flex-end' };
     const aiMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
     const imgJC = jcMap[sc.imgAlignV || 'center'] || 'center';
@@ -1099,6 +1099,7 @@ function renderEditorSide() {
       <button class="eh${cfg.textAlign==='center'?' on':''}" onclick="cfg.textAlign='center';updateSlides();renderEditorSide()">Centro</button>
       <button class="eh${cfg.textAlign==='right'?' on':''}" onclick="cfg.textAlign='right';updateSlides();renderEditorSide()">Dir.</button>
     </div>
+    <button class="esm" style="margin-top:4px" onclick="refineSlide()">✦ Refinar textos com IA</button>
 
     <span class="sub-lbl">Cores</span>
     <div class="row"><span class="row-lbl">Título</span></div>
