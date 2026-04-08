@@ -422,6 +422,7 @@ const cfg = {
   ctaOn: false, ctaText: 'Saiba mais →', ctaStyle: 'solid', ctaColor: '#7c3aed', ctaAlign: 'left',
   logoOn: false, logoPos: 'top', logoAlign: 'left', logoSize: 28,
   paddingH: 30, paddingV: 40, margin: 24, textAlign: 'center', textPos: 'center',
+  titleSize: 22, bodySize: 13,
   overlayOp: 80, overlayType: 'gradient'
 };
 
@@ -870,8 +871,8 @@ function getSlideHTML(s, i, active) {
       <div style="position:absolute;top:14px;left:18px;font-size:11px;color:rgba(255,255,255,.6);font-weight:500;z-index:4">@emp.wesleysilva</div>
       <div class="s-content" style="z-index:3; justify-content:${contentJC}; align-items:${contentAI}">
         <div style="padding:${pv}px ${ph}px; margin:${mg/2}px; text-align:${cfg.textAlign}; width:100%">
-          <div class="s-ttl" style="color:${cfg.titleColor}">${title}</div>
-          <div class="s-sub" style="color:${cfg.subColor}">${sub}</div>
+          <div class="s-ttl" style="color:${cfg.titleColor};font-size:${cfg.titleSize}px">${title}</div>
+          <div class="s-sub" style="color:${cfg.subColor};font-size:${cfg.bodySize}px">${sub}</div>
           ${ctaHTML}
         </div>
       </div>
@@ -1011,6 +1012,11 @@ function renderEditorSide() {
       <button class="eh${cfg.textAlign==='center'?' on':''}" onclick="setAlign('center')">Centro</button>
       <button class="eh${cfg.textAlign==='right'?' on':''}" onclick="setAlign('right')">Dir.</button>
     </div>
+    <span class="sub-lbl">Tamanho da fonte</span>
+    <div class="row"><span class="row-lbl">Título</span><span class="row-val" id="vts">${cfg.titleSize}</span></div>
+    <input type="range" class="sl" min="14" max="48" value="${cfg.titleSize}" step="1" oninput="cfg.titleSize=parseInt(this.value);document.getElementById('vts').textContent=this.value;updateSlides()">
+    <div class="row"><span class="row-lbl">Corpo</span><span class="row-val" id="vbs">${cfg.bodySize}</span></div>
+    <input type="range" class="sl" min="10" max="28" value="${cfg.bodySize}" step="1" oninput="cfg.bodySize=parseInt(this.value);document.getElementById('vbs').textContent=this.value;updateSlides()">
     <span class="sub-lbl">Respiro interno (px)</span>
     <div class="row"><span class="row-lbl">Padding horizontal</span><span class="row-val" id="vph">${cfg.paddingH}</span></div>
     <input type="range" class="sl" min="0" max="100" value="${cfg.paddingH}" step="1" oninput="cfg.paddingH=parseInt(this.value);document.getElementById('vph').textContent=this.value;updateSlides()">

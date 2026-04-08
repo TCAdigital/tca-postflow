@@ -425,6 +425,7 @@ const defaultSlideCfg = () => ({
   gridOn: false, gridType: 'none', gridColor: '#ffffff',
   titleColor: '#ffffff', subColor: '#cccccc',
   titleFont: 'Space Grotesk', bodyFont: 'Inter',
+  titleSize: 22, bodySize: 13,
   ctaOn: false, ctaText: 'Saiba mais →', ctaStyle: 'solid', ctaColor: '#7c3aed', ctaAlign: 'left',
   paddingH: 30, paddingV: 40, margin: 24, textAlign: 'center', textPos: 'center',
   overlayOp: 80, overlayType: 'gradient',
@@ -909,8 +910,10 @@ function getSlideHTML(s, i, active) {
   const gridCSS = getGridCSS(sc);
   if (sc.titleFont) loadFont(sc.titleFont);
   if (sc.bodyFont) loadFont(sc.bodyFont);
-  const tStyle = sc.titleFont ? `font-family:'${sc.titleFont}', sans-serif;` : '';
-  const bStyle = sc.bodyFont ? `font-family:'${sc.bodyFont}', sans-serif;` : '';
+   const tStyle = sc.titleFont ? `font-family:'${sc.titleFont}', sans-serif;` : '';
+   const bStyle = sc.bodyFont ? `font-family:'${sc.bodyFont}', sans-serif;` : '';
+   const titleSize = sc.titleSize || 22;
+   const bodySize = sc.bodySize || 13;
   const fStyle = tStyle; // Fallback or global base style
   const bg = getSlideBg(s);
   const jcLogo = globalCfg.logoAlign==='center'?'center':globalCfg.logoAlign==='right'?'flex-end':'flex-start';
@@ -966,8 +969,8 @@ function getSlideHTML(s, i, active) {
       ${globalCfg.handleOn ? `<div style="position:absolute;top:14px;left:18px;font-size:11px;color:rgba(255,255,255,.6);font-weight:500;z-index:5">${globalCfg.handle||'@seuarroba'}</div>` : ''}
       <div class="s-content" style="z-index:${isProfile?4:3}; justify-content:${contentJC}; align-items:${contentAI};">
         <div style="padding:${pv}px ${ph}px; margin:${mg/2}px; text-align:${sc.textAlign}; width:100%">
-          <div class="s-ttl" style="color:${sc.titleColor}; ${tStyle} font-size:${isProfile?'28px':'22px'};">${title}</div>
-          <div class="s-sub" style="color:${sc.subColor}; ${bStyle}">${sub}</div>
+          <div class="s-ttl" style="color:${sc.titleColor}; ${tStyle} font-size:${titleSize}px;">${title}</div>
+          <div class="s-sub" style="color:${sc.subColor}; ${bStyle} font-size:${bodySize}px;">${sub}</div>
           ${ctaHTML}
         </div>
       </div>
@@ -1097,6 +1100,12 @@ function renderEditorSide() {
       <button class="eh${cfg.textAlign==='right'?' on':''}" onclick="cfg.textAlign='right';updateSlides();renderEditorSide()">Dir.</button>
     </div>
     <button class="esm" style="margin-top:4px" onclick="refineSlide()">✦ Refinar textos com IA</button>
+
+    <span class="sub-lbl">Tamanho da fonte</span>
+    <div class="row"><span class="row-lbl">Título</span><span class="row-val" id="vts">${cfg.titleSize}px</span></div>
+    <input type="range" class="sl" min="14" max="48" value="${cfg.titleSize}" step="1" oninput="cfg.titleSize=parseInt(this.value);document.getElementById('vts').textContent=this.value+'px';updateSlides()">
+    <div class="row"><span class="row-lbl">Corpo</span><span class="row-val" id="vbs">${cfg.bodySize}px</span></div>
+    <input type="range" class="sl" min="10" max="28" value="${cfg.bodySize}" step="1" oninput="cfg.bodySize=parseInt(this.value);document.getElementById('vbs').textContent=this.value+'px';updateSlides()">
 
     <span class="sub-lbl">Cores</span>
     <div class="row"><span class="row-lbl">Título</span></div>
