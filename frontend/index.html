@@ -416,6 +416,7 @@ let history = JSON.parse(localStorage.getItem('tca_history') || '[]');
 let genStep = 1;
 let selN = 5, selIO = 0, selF = 0, selC = -1;
 let genImageMode = 'none';
+let editingId = null; // Tracks current carousel in history
 
 // ── PER-SLIDE DEFAULT CONFIG ────────────────────────────────────────
 const defaultSlideCfg = () => ({
@@ -706,6 +707,8 @@ async function doGenerate() {
       renderHistory();
 
       goV('editor');
+      editingId = h.id;
+      saveCurrentWork();
       renderEditorSide();
       toast('✦ Carrossel gerado com sucesso!');
     }, 600);
@@ -827,22 +830,26 @@ function updateStats() {
 function renderHistory() {
   const area = document.getElementById('cc-row'); if (!area) return;
   if (!history.length) { area.innerHTML = '<div style="color:var(--mu2);padding:20px 0;font-size:12px">Nenhum carrossel criado ainda.</div>'; return; }
-  const COLORS_BG = [['#0f0030','#200060'],['#001a00','#003300'],['#001020','#002040'],['#150020','#280040'],['#0a0a1e','#1a0050'],['#020a14','#051428']];
-  area.innerHTML = history.slice(0, 8).map((h, i) => {
-    const [c1, c2] = COLORS_BG[i % COLORS_BG.length];
+  area.innerHTML = history.slice(0, 12).map((h, i) => {
     const title = h.slides?.[0]?.t || h.prompt?.substring(0, 40).toUpperCase() || 'CARROSSEL';
     const ago = timeAgo(h.createdAt);
-    return `<div class="ccard" onclick="loadHistory(${h.id})">
-      <div class="cth" style="background:linear-gradient(150deg,${c1},${c2})">
-        <div class="cth-chips"><span class="chip">⊞ Minimalista</span><span class="chip">${h.numSlides} slides</span></div>
-        <div class="cth-title">${title}</div>
+    // Create a mini-preview of the first slide
+    let previewHTML = '';
+    if (h.slides && h.slides[0]) {
+      const s0 = h.slides[0];
+      // Fake global for preview if needed, but getSlideHTML uses globalCfg
+      previewHTML = `<div style="transform:scale(0.5);transform-origin:top left;width:320px;height:400px;pointer-events:none;border-radius:14px;overflow:hidden">${getSlideHTML(s0, 0, false)}</div>`;
+    }
+    return `<div class="ccard" onclick="loadHistory(${h.id})" style="flex:0 0 240px;height:auto">
+      <div class="cth" style="height:200px;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden">
+        ${previewHTML}
       </div>
       <div class="cbody">
         <div class="cb-t">${title}</div>
-        <div class="cb-ago">${ago}</div>
-        <div class="cb-prompt"><div class="cb-pl">Prompt usado</div><div class="cb-pt">${h.prompt}</div></div>
+        <div class="cb-ago">${ago} • ${h.numSlides} slides</div>
+        <div class="cb-prompt"><div class="cb-pl">Prompt</div><div class="cb-pt">${h.prompt}</div></div>
         <div class="cb-acts">
-          <button class="cb-btn" onclick="event.stopPropagation();loadHistory(${h.id})">↗ Abrir</button>
+          <button class="cb-btn" onclick="event.stopPropagation();loadHistory(${h.id})">Editar</button>
           <button class="cb-btn" onclick="event.stopPropagation();deleteHistory(${h.id})">🗑</button>
         </div>
       </div>
@@ -853,6 +860,7 @@ function renderHistory() {
 function loadHistory(id) {
   const h = history.find(x => x.id === id);
   if (!h) return;
+  editingId = id;
   slides = h.slides.map(s => ({
     t: s.t || s.title,
     b: s.b || s.body,
@@ -935,14 +943,15 @@ function getSlideHTML(s, i, active) {
     </div>`;
   }
 
-  // Posicionamento do conteúdo
+  // Posicionamento do conteúdo (3x3 Grid logic)
   let contentJC = 'center';
-  if (sc.textPos?.includes('Sup')) contentJC = 'flex-start';
-  if (sc.textPos?.includes('Inf')) contentJC = 'flex-end';
-  if (sc.textPos === 'center') contentJC = 'center';
+  const vPos = sc.textPos || 'center-center';
+  if (vPos.startsWith('top')) contentJC = 'flex-start';
+  if (vPos.startsWith('bottom')) contentJC = 'flex-end';
+  
   let contentAI = 'center';
-  if (sc.textPos?.includes('Esq')) contentAI = 'flex-start';
-  if (sc.textPos?.includes('Dir')) contentAI = 'flex-end';
+  if (vPos.endsWith('left')) contentAI = 'flex-start';
+  if (vPos.endsWith('right')) contentAI = 'flex-end';
 
   // Sombra Overlay
   const oOp = (sc.overlayOp || 80) / 100;
@@ -987,7 +996,17 @@ function renderSlides() {
   const ttl = document.getElementById('ed-ttl'); if (ttl) ttl.value = slides[curSl]?.t || '';
   const sub = document.getElementById('ed-sub'); if (sub) sub.value = slides[curSl]?.b || '';
 }
-function updateSlides() { renderSlides(); }
+function updateSlides() { renderSlides(); saveCurrentWork(); }
+function saveCurrentWork() {
+  if (!editingId) return;
+  const idx = history.findIndex(h => h.id === editingId);
+  if (idx !== -1) {
+    history[idx].slides = JSON.parse(JSON.stringify(slides));
+    history[idx].numSlides = slides.length;
+    localStorage.setItem('tca_history', JSON.stringify(history));
+    updateStats();
+  }
+}
 function selSl(i) { curSl = i; renderSlides(); renderEditorSide(); }
 function prevSl() { if (curSl > 0) { curSl--; renderSlides(); } }
 function nextSl() { if (curSl < slides.length - 1) { curSl++; renderSlides(); } }
@@ -1069,15 +1088,37 @@ function renderEditorSide() {
     <textarea class="eta" rows="2" oninput="slides[curSl].t=this.value;updateSlides()" placeholder="Título principal">${slides[curSl]?.t||''}</textarea>
     <textarea class="eta" rows="3" oninput="slides[curSl].b=this.value;updateSlides()" placeholder="Descrição/Subtítulo">${slides[curSl]?.b||''}</textarea>
     
-    <span class="sub-lbl">Alinhamento do Texto</span>
+    <span class="sub-lbl">Alinhamento Texto (3x3)</span>
+    <div class="lg9" style="margin-bottom:10px">
+      ${['top-left', 'top-center', 'top-right', 'center-left', 'center-center', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right'].map(pos => {
+        const active = (cfg.textPos || 'center-center') === pos;
+        return `<div class="lgb${active?' on':''}" onclick="cfg.textPos='${pos}';updateSlides();renderEditorSide()"></div>`;
+      }).join('')}
+    </div>
     <div class="e3" style="margin-bottom:10px">
       <button class="eh${cfg.textAlign==='left'?' on':''}" onclick="cfg.textAlign='left';updateSlides();renderEditorSide()">Esq.</button>
       <button class="eh${cfg.textAlign==='center'?' on':''}" onclick="cfg.textAlign='center';updateSlides();renderEditorSide()">Centro</button>
       <button class="eh${cfg.textAlign==='right'?' on':''}" onclick="cfg.textAlign='right';updateSlides();renderEditorSide()">Dir.</button>
     </div>
-    <span class="sub-lbl">Cor do Título</span>
+
+    <span class="sub-lbl">Cores</span>
+    <div class="row"><span class="row-lbl">Título</span></div>
     <div class="color-row"><input class="color-hex" id="title-hex" value="${cfg.titleColor}" oninput="setCfgC('titleColor',this.value,'title-prev')"><div class="color-preview" id="title-prev" style="background:${cfg.titleColor}" onclick="document.getElementById('title-native-pick').click()"></div><input type="color" style="display:none" id="title-native-pick" value="${cfg.titleColor}" oninput="setCfgC('titleColor',this.value,'title-prev','title-hex')"></div>
-    <div class="cpal">${PAL}</div>
+    <div class="cpal" style="margin-bottom:12px">${PAL}</div>
+
+    <div class="row"><span class="row-lbl">Corpo</span></div>
+    <div class="color-row"><input class="color-hex" id="sub-hex" value="${cfg.subColor}" oninput="setCfgC('subColor',this.value,'sub-prev')"><div class="color-preview" id="sub-prev" style="background:${cfg.subColor}" onclick="document.getElementById('sub-native-pick').click()"></div><input type="color" style="display:none" id="sub-native-pick" value="${cfg.subColor}" oninput="setCfgC('subColor',this.value,'sub-prev','sub-hex')"></div>
+    <div class="cpal">${PAL2}</div>
+  </div></div>
+
+  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Espaçamento & Layout</span><span class="sec-chev open">▾</span></div>
+  <div class="sec-body open">
+    <div class="row"><span class="row-lbl">Padding Horiz.</span><span class="row-val">${cfg.paddingH}px</span></div>
+    <input type="range" class="sl" min="10" max="80" value="${cfg.paddingH}" oninput="cfg.paddingH=parseInt(this.value);updateSlides()">
+    <div class="row"><span class="row-lbl">Padding Vert.</span><span class="row-val">${cfg.paddingV}px</span></div>
+    <input type="range" class="sl" min="10" max="80" value="${cfg.paddingV}" oninput="cfg.paddingV=parseInt(this.value);updateSlides()">
+    <div class="row"><span class="row-lbl">Margem Geral</span><span class="row-val">${cfg.margin}px</span></div>
+    <input type="range" class="sl" min="0" max="60" value="${cfg.margin}" oninput="cfg.margin=parseInt(this.value);updateSlides()">
   </div></div>
 
   <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Imagem do Slide</span><span class="sec-chev open">▾</span></div>
@@ -1087,14 +1128,14 @@ function renderEditorSide() {
     <input type="file" id="up-real" style="display:none" accept="image/*" onchange="handleUpload(this)">
     
     <span class="sub-lbl">Modo de Exibição</span>
-    <div class="e2" style="margin-bottom:8px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px">
       <button class="eh${cfg.imgMode==='bg'?' on':''}" onclick="setImgMode('bg')">Fundo (Cheio)</button>
       <button class="eh${cfg.imgMode==='block'?' on':''}" onclick="setImgMode('block')">Bloco (Imagem)</button>
     </div>
     
     <div style="display:${cfg.imgMode==='bg'?'block':'none'}">
       <div class="row"><span class="row-lbl">Zoom</span><span class="row-val">${cfg.imgZ}%</span></div>
-      <input type="range" class="sl" min="100" max="300" value="${cfg.imgZ}" oninput="cfg.imgZ=parseInt(this.value);updateSlides();renderEditorSide()">
+      <input type="range" class="sl" min="100" max="350" value="${cfg.imgZ}" oninput="cfg.imgZ=parseInt(this.value);updateSlides();renderEditorSide()">
       <div class="row"><span class="row-lbl">Posição X</span><span class="row-val">${cfg.imgX}%</span></div>
       <input type="range" class="sl" min="0" max="100" value="${cfg.imgX}" oninput="cfg.imgX=parseInt(this.value);updateSlides()">
       <div class="row"><span class="row-lbl">Posição Y</span><span class="row-val">${cfg.imgY}%</span></div>
@@ -1102,20 +1143,19 @@ function renderEditorSide() {
     </div>
 
     <div style="display:${cfg.imgMode==='block'?'block':'none'}">
-       <span class="sub-lbl">Proporção do Bloco</span>
-       <div class="e2" style="margin-bottom:10px">
-        <button class="eh${cfg.imgRatio==='4:5'?' on':''}" onclick="cfg.imgRatio='4:5';updateSlides();renderEditorSide()">4:5 (Insta)</button>
-        <button class="eh${cfg.imgRatio==='16:9'?' on':''}" onclick="cfg.imgRatio='16:9';updateSlides();renderEditorSide()">16:9 (Wide)</button>
-       </div>
-       <span class="sub-lbl">Alinhamento</span>
-       <div class="lg9">
+       <span class="sub-lbl">Alinhamento (3x3)</span>
+       <div class="lg9" style="margin-bottom:10px">
          ${['top-left', 'top-center', 'top-right', 'center-left', 'center-center', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right'].map(pos => {
            const [v, h] = pos.split('-');
            const active = cfg.imgAlignV === v && cfg.imgAlignH === h;
            return `<div class="lgb${active?' on':''}" onclick="cfg.imgAlignV='${v}';cfg.imgAlignH='${h}';updateSlides();renderEditorSide()"></div>`;
          }).join('')}
        </div>
-       <div style="text-align:center;font-size:9px;color:var(--mu2);margin-top:2px">${cfg.imgAlignV} / ${cfg.imgAlignH}</div>
+       <span class="sub-lbl">Proporção</span>
+       <div class="e2">
+        <button class="eh${cfg.imgRatio==='4:5'?' on':''}" onclick="cfg.imgRatio='4:5';updateSlides();renderEditorSide()">4:5</button>
+        <button class="eh${cfg.imgRatio==='16:9'?' on':''}" onclick="cfg.imgRatio='16:9';updateSlides();renderEditorSide()">16:9</button>
+       </div>
     </div>
   </div></div>
 
@@ -1125,33 +1165,52 @@ function renderEditorSide() {
     <div style="display:${cfg.ctaOn?'block':'none'}">
       <input class="einp" value="${cfg.ctaText}" oninput="cfg.ctaText=this.value;updateSlides()">
       <span class="sub-lbl">Alinhamento</span>
-      <div class="e3">
+      <div class="e3" style="margin-bottom:10px">
         <button class="eh${cfg.ctaAlign==='left'?' on':''}" onclick="cfg.ctaAlign='left';updateSlides();renderEditorSide()">Esq</button>
         <button class="eh${cfg.ctaAlign==='center'?' on':''}" onclick="cfg.ctaAlign='center';updateSlides();renderEditorSide()">Meio</button>
         <button class="eh${cfg.ctaAlign==='right'?' on':''}" onclick="cfg.ctaAlign='right';updateSlides();renderEditorSide()">Dir</button>
+      </div>
+      <span class="sub-lbl">Estilo</span>
+      <div class="e2" style="margin-bottom:10px">
+        <button class="eh${cfg.ctaStyle==='solid'?' on':''}" onclick="cfg.ctaStyle='solid';updateSlides();renderEditorSide()">Sólido</button>
+        <button class="eh${cfg.ctaStyle==='outline'?' on':''}" onclick="cfg.ctaStyle='outline';updateSlides();renderEditorSide()">Contorno</button>
       </div>
       <span class="sub-lbl">Cor</span>
       <div class="cpal">${PAL3}</div>
     </div>
   </div></div>
 
-  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Sombra & Grade</span><span class="sec-chev">▾</span></div>
+  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Sombra & Filtro</span><span class="sec-chev">▾</span></div>
   <div class="sec-body">
-    <div class="row"><span class="row-lbl">Sombra Overlay</span><span class="row-val">${cfg.overlayOp}%</span></div>
+    <div class="row"><span class="row-lbl">Overlay</span><span class="row-val">${cfg.overlayOp}%</span></div>
     <input type="range" class="sl" min="0" max="100" value="${cfg.overlayOp}" oninput="cfg.overlayOp=parseInt(this.value);updateSlides()">
+    <span class="sub-lbl">Tipo</span>
+    <select class="esel" onchange="cfg.overlayType=this.value;updateSlides()">
+      <option value="gradient" ${cfg.overlayType==='gradient'?'selected':''}>Gradiente Inferior</option>
+      <option value="top" ${cfg.overlayType==='top'?'selected':''}>Bordas (Top/Bottom)</option>
+      <option value="full" ${cfg.overlayType==='full'?'selected':''}>Escurecer tudo</option>
+      <option value="none" ${cfg.overlayType==='none'?'selected':''}>Sem overlay</option>
+    </select>
     <div class="tg-row" style="margin-top:10px"><span class="tg-lbl">Grade de Fundo</span><div class="tg${cfg.gridOn?' on':''}" onclick="toggleGrid()"></div></div>
   </div></div>
-  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Logo da Marca</span><span class="sec-chev">▾</span></div>
+
+  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Config Logo</span><span class="sec-chev">▾</span></div>
   <div class="sec-body">
     <div class="tg-row"><span class="tg-lbl">Mostrar Logo</span><div class="tg${globalCfg.logoOn?' on':''}" onclick="toggleLogo()"></div></div>
     <div style="display:${globalCfg.logoOn?'block':'none'}">
-      <div class="e3" style="margin-bottom:8px">
+       <span class="sub-lbl">Posição Vertical</span>
+       <div class="e2" style="margin-bottom:10px">
+          <button class="eh${globalCfg.logoPos==='top'?' on':''}" onclick="globalCfg.logoPos='top';updateSlides();renderEditorSide()">Topo</button>
+          <button class="eh${globalCfg.logoPos==='bottom'?' on':''}" onclick="globalCfg.logoPos='bottom';updateSlides();renderEditorSide()">Base</button>
+       </div>
+       <span class="sub-lbl">Alinhamento</span>
+       <div class="e3" style="margin-bottom:10px">
         <button class="eh${globalCfg.logoAlign==='left'?' on':''}" onclick="globalCfg.logoAlign='left';updateSlides();renderEditorSide()">Esq.</button>
-        <button class="eh${globalCfg.logoAlign==='center'?' on':''}" onclick="globalCfg.logoAlign='center';updateSlides();renderEditorSide()">Centro</button>
+        <button class="eh${globalCfg.logoAlign==='center'?' on':''}" onclick="globalCfg.logoAlign='center';updateSlides();renderEditorSide()">Meio</button>
         <button class="eh${globalCfg.logoAlign==='right'?' on':''}" onclick="globalCfg.logoAlign='right';updateSlides();renderEditorSide()">Dir.</button>
       </div>
-      <div class="row"><span class="row-lbl">Tamanho</span><span class="row-val">${globalCfg.logoSize}</span></div>
-      <input type="range" class="sl" min="12" max="56" value="${globalCfg.logoSize}" step="1" oninput="globalCfg.logoSize=parseInt(this.value);updateSlides();renderEditorSide()">
+      <div class="row"><span class="row-lbl">Tamanho</span><span class="row-val">${globalCfg.logoSize}px</span></div>
+      <input type="range" class="sl" min="14" max="60" value="${globalCfg.logoSize}" oninput="globalCfg.logoSize=parseInt(this.value);updateSlides();renderEditorSide()">
     </div>
   </div></div>
 
@@ -1253,10 +1312,11 @@ function selectGradPreset(c1, c2) {
 }
 
 // ── COLOR PICKER (title, subtitle, CTA) ───────────────────────────
-function setCfgC(key, color) {
+function setCfgC(key, color, prevId, hexId) {
   cfg[key] = color;
+  if (prevId) { const p = document.getElementById(prevId); if (p) p.style.background = color; }
+  if (hexId) { const h = document.getElementById(hexId); if (h) h.value = color; }
   updateSlides();
-  renderEditorSide();
 }
 
 function selectSolid(c) {
@@ -1295,8 +1355,8 @@ async function generateSlideImage() {
   const img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = () => {
-    slides[curSl].imageLoading = false;
-    slides[curSl].imageUrl = url;
+    cfg.imageUrl = url;
+    cfg.imageLoading = false;
     updateSlides();
     toast('✅ Imagem gerada!');
   };
