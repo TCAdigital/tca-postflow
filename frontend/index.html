@@ -1141,6 +1141,23 @@ function renderEditorSide() {
     <input type="range" class="sl" min="0" max="100" value="${cfg.overlayOp}" oninput="cfg.overlayOp=parseInt(this.value);updateSlides()">
     <div class="tg-row" style="margin-top:10px"><span class="tg-lbl">Grade de Fundo</span><div class="tg${cfg.gridOn?' on':''}" onclick="toggleGrid()"></div></div>
   </div></div>
+  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Logo da Marca</span><span class="sec-chev">▾</span></div>
+  <div class="sec-body">
+    <div class="tg-row"><span class="tg-lbl">Mostrar Logo</span><div class="tg${globalCfg.logoOn?' on':''}" onclick="toggleLogo()"></div></div>
+    <div style="display:${globalCfg.logoOn?'block':'none'}">
+      <div class="e3" style="margin-bottom:8px">
+        <button class="eh${globalCfg.logoAlign==='left'?' on':''}" onclick="globalCfg.logoAlign='left';updateSlides();renderEditorSide()">Esq.</button>
+        <button class="eh${globalCfg.logoAlign==='center'?' on':''}" onclick="globalCfg.logoAlign='center';updateSlides();renderEditorSide()">Centro</button>
+        <button class="eh${globalCfg.logoAlign==='right'?' on':''}" onclick="globalCfg.logoAlign='right';updateSlides();renderEditorSide()">Dir.</button>
+      </div>
+      <div class="row"><span class="row-lbl">Tamanho</span><span class="row-val">${globalCfg.logoSize}</span></div>
+      <input type="range" class="sl" min="12" max="56" value="${globalCfg.logoSize}" step="1" oninput="globalCfg.logoSize=parseInt(this.value);updateSlides();renderEditorSide()">
+    </div>
+  </div></div>
+
+  <div class="sec" style="border-bottom:none;padding:12px">
+    <button class="edlbtn" onclick="downloadCurrentSlide()">⬇ Baixar Slide Atual</button>
+  </div>
   `;
 }
 
@@ -1155,15 +1172,7 @@ function handleUpload(el) {
   reader.readAsDataURL(file);
 }
 
-      <div class="e3" style="margin-bottom:8px"><button class="eh${cfg.logoAlign==='left'?' on':''}" id="logo-al-l" onclick="setLogoAlign('left')">Esq.</button><button class="eh${cfg.logoAlign==='center'?' on':''}" id="logo-al-c" onclick="setLogoAlign('center')">Centro</button><button class="eh${cfg.logoAlign==='right'?' on':''}" id="logo-al-r" onclick="setLogoAlign('right')">Dir.</button></div>
-      <div class="row"><span class="row-lbl">Tamanho</span><span class="row-val" id="vls">28</span></div>
-      <input type="range" class="sl" min="12" max="56" value="28" step="1" oninput="document.getElementById('vls').textContent=this.value;updateSlides()">
-    </div>
-  </div></div>
-  <div class="sec" style="border-bottom:none;padding:12px">
-    <button class="edlbtn" onclick="downloadCurrentSlide()">⬇ Baixar Slide Atual</button>
-  </div>`;
-}
+
 
 // ─── EDITOR CONTROLS ────────────────────────────────────────────────────
 
@@ -1181,8 +1190,6 @@ function swBtn(el) {
 }
 
 // ── STYLE / THEME ──────────────────────────────────────────────────
-function setStyle(type) {
-  cfg.style = type;
 function setStyle(type) {
   globalCfg.style = type;
   updateSlides();
