@@ -192,6 +192,7 @@ nav{display:flex;align-items:center;height:48px;background:var(--bg2);border-bot
 .s-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
 .loading-skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
 /* MODAL */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:400;display:none;align-items:center;justify-content:center}
@@ -415,6 +416,7 @@ let selN = 5, selIO = 0, selF = 0, selC = -1;
 let genImageMode = 'none';
 
 const cfg = {
+  style: 'minimal', theme: 'dark',
   bgType: 'none', solidColor: '#0f0520',
   gradDir: 'to bottom', gradC1: '#0f0520', gradC2: '#1a0050',
   gridOn: false, gridType: 'none', gridColor: '#ffffff',
@@ -422,7 +424,9 @@ const cfg = {
   ctaOn: false, ctaText: 'Saiba mais →', ctaStyle: 'solid', ctaColor: '#7c3aed', ctaAlign: 'left',
   logoOn: false, logoPos: 'top', logoAlign: 'left', logoSize: 28,
   paddingH: 30, paddingV: 40, margin: 24, textAlign: 'center', textPos: 'center',
-  overlayOp: 80, overlayType: 'gradient'
+  overlayOp: 80, overlayType: 'gradient',
+  handleOn: true, handle: '@seuarroba',
+  imgX: 50, imgY: 50, imgZ: 175, imgMode: 'bg'
 };
 
 const PALETTE = ['#ffffff','#a78bfa','#7c3aed','#eab308','#ef4444','#22c55e','#3b82f6','#f97316','#ec4899','#000000'];
@@ -842,7 +846,16 @@ function getSlideHTML(s, i, active) {
   
   const logoHTML = cfg.logoOn ? `<div style="display:flex;justify-content:${jcLogo};padding:${mg/2}px ${mg}px;width:100%"><div style="height:${ls}px;padding:0 12px;background:rgba(255,255,255,.15);border-radius:6px;display:flex;align-items:center;font-size:${Math.max(10,Math.round(ls*.38))}px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:.05em">LOGO</div></div>` : '';
   const ctaHTML = cfg.ctaOn ? `<div style="display:flex;justify-content:${jcCTA};margin-top:14px"><div style="font-size:12px;padding:6px 14px;border-radius:6px;font-weight:700;background:${cfg.ctaStyle==='solid'?cfg.ctaColor:'transparent'};border:${cfg.ctaStyle==='outline'?'1px solid '+cfg.ctaColor:'none'};color:${cfg.ctaStyle==='outline'?cfg.ctaColor:'#fff'}">${cfg.ctaText}</div></div>` : '';
-  const imgTag = s.imageUrl ? `<img class="s-img" src="${s.imageUrl}" crossorigin="anonymous" onerror="this.style.display='none'">` : '';
+  const loadingTag = s.imageLoading ? `<div style="position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)"><svg width="36" height="36" viewBox="0 0 50 50" style="animation:spin 1s linear infinite"><circle cx="25" cy="25" r="20" fill="none" stroke="#a78bfa" stroke-width="4" stroke-dasharray="60 40"/></svg></div>` : '';
+
+  // Image rendering: bg (cover) or positioned (top/bottom/center)
+  let imgHTML = '';
+  if (s.imageUrl && cfg.imgMode === 'bg') {
+    imgHTML = `<img class="s-img" src="${s.imageUrl}" crossorigin="anonymous" style="object-fit:cover;object-position:${cfg.imgX}% ${cfg.imgY}%;transform:scale(${cfg.imgZ/100})" onerror="this.style.display='none'">`;
+  } else if (s.imageUrl && cfg.imgMode !== 'bg') {
+    const posStyle = cfg.imgMode === 'top' ? 'top:0;left:0;right:0;object-fit:cover;height:50%' : cfg.imgMode === 'bottom' ? 'bottom:40px;left:0;right:0;object-fit:cover;height:50%' : 'top:50%;left:0;right:0;object-fit:cover;height:40%;transform:translateY(-50%)';
+    imgHTML = `<img src="${s.imageUrl}" crossorigin="anonymous" style="position:absolute;${posStyle};z-index:0" onerror="this.style.display='none'">`;
+  }
 
   // Posicionamento do conteúdo
   let contentJC = 'center'; // Vertical
@@ -863,11 +876,12 @@ function getSlideHTML(s, i, active) {
 
   return `<div class="sw${active?' on':''}" onclick="selSl(${i})">
     <div class="sf" style="background:${bg}">
-      ${imgTag}
+      ${imgHTML}
+      ${loadingTag}
       ${gridCSS?`<div style="position:absolute;inset:0;background-image:${gridCSS};background-size:${cfg.gridType==='dot'?'16px 16px':'auto'};pointer-events:none;z-index:1"></div>`:''}
       ${overlayCSS !== 'none' ? `<div style="position:absolute;inset:0;background:${overlayCSS};pointer-events:none;z-index:2"></div>` : ''}
       <div style="position:absolute;top:0;left:0;right:0;z-index:4">${cfg.logoOn&&cfg.logoPos==='top'?logoHTML:''}</div>
-      <div style="position:absolute;top:14px;left:18px;font-size:11px;color:rgba(255,255,255,.6);font-weight:500;z-index:4">@emp.wesleysilva</div>
+      ${cfg.handleOn ? `<div style="position:absolute;top:14px;left:18px;font-size:11px;color:rgba(255,255,255,.6);font-weight:500;z-index:4">${cfg.handle||'@seuarroba'}</div>` : ''}
       <div class="s-content" style="z-index:3; justify-content:${contentJC}; align-items:${contentAI}">
         <div style="padding:${pv}px ${ph}px; margin:${mg/2}px; text-align:${cfg.textAlign}; width:100%">
           <div class="s-ttl" style="color:${cfg.titleColor}">${title}</div>
@@ -917,12 +931,17 @@ function renderEditorSide() {
   side.innerHTML = `
   <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Estilo</span><span class="sec-chev open">▾</span></div>
   <div class="sec-body open">
-    <button class="eb on" id="e-min" onclick="this.classList.add('on');document.getElementById('e-pro').classList.remove('on')">Minimalista</button>
-    <button class="eb" id="e-pro" onclick="this.classList.add('on');document.getElementById('e-min').classList.remove('on')">Profile</button>
+    <div class="e2">
+      <button class="eb${cfg.style==='minimal'?' on':''}" id="e-min" onclick="setStyle('minimal')">Minimalista</button>
+      <button class="eb${cfg.style==='profile'?' on':''}" id="e-pro" onclick="setStyle('profile')">Profile</button>
+    </div>
   </div></div>
   <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Fundo do Slide</span><span class="sec-chev open">▾</span></div>
   <div class="sec-body open">
-    <div class="e2"><button class="eh on" onclick="swBtn(this)">Escuro</button><button class="eh" onclick="swBtn(this)">Claro</button></div>
+    <div class="e2">
+      <button class="eh${cfg.theme!=='light'?' on':''}" onclick="setTheme('dark')">Escuro</button>
+      <button class="eh${cfg.theme==='light'?' on':''}" onclick="setTheme('light')">Claro</button>
+    </div>
     <button class="eai" onclick="openGenModal()">✦ Gerar com IA ›</button>
   </div></div>
   <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Cor de Fundo</span><span class="sec-chev open">▾</span></div>
@@ -953,16 +972,30 @@ function renderEditorSide() {
       <span class="sub-lbl">Presets</span><div class="bg-presets">${GRAD_P}</div>
     </div>
   </div></div>
+  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">@ Identidade</span><span class="sec-chev open">▾</span></div>
+  <div class="sec-body open">
+    <div class="tg-row"><span class="tg-lbl">Mostrar @</span><div class="tg${cfg.handleOn?' on':''}" id="handle-toggle" onclick="toggleHandle()"></div></div>
+    <span class="sub-lbl">Texto do @</span>
+    <input class="einp" value="${cfg.handle||'@seuarroba'}" oninput="setHandle(this.value)">
+  </div></div>
   <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Imagem de Fundo</span><span class="sec-chev">▾</span></div>
   <div class="sec-body">
-    <div class="eup" onclick="toast('Upload de imagem — integre file input em produção')">Clique ou arraste<br><span style="font-size:9px">JPG, PNG, WebP</span></div>
+    <input class="einp" id="img-ai-prompt" placeholder="Descreva a imagem IA (opcional)..." style="margin-bottom:6px">
     <button class="esm" onclick="generateSlideImage()">✦ Gerar imagem com IA</button>
-    <div class="row" style="margin-top:6px"><span class="row-lbl">Posição X</span><span class="row-val" id="vx">50</span></div>
-    <input type="range" class="sl" min="0" max="100" value="50" step="1" oninput="document.getElementById('vx').textContent=this.value">
-    <div class="row"><span class="row-lbl">Posição Y</span><span class="row-val" id="vy">50</span></div>
-    <input type="range" class="sl" min="0" max="100" value="50" step="1" oninput="document.getElementById('vy').textContent=this.value">
-    <div class="row"><span class="row-lbl">Zoom %</span><span class="row-val" id="vz">175</span></div>
-    <input type="range" class="sl" min="50" max="300" value="175" step="1" oninput="document.getElementById('vz').textContent=this.value">
+    <div class="eup" onclick="toast('Upload em breve!')">Clique ou arraste<br><span style="font-size:9px">JPG, PNG, WebP</span></div>
+    <span class="sub-lbl">Modo de exibição</span>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px">
+      <button class="eh img-mode-btn${cfg.imgMode==='bg'?' on':''}" data-mode="bg" onclick="setImgMode('bg')">Fundo (cover)</button>
+      <button class="eh img-mode-btn${cfg.imgMode==='top'?' on':''}" data-mode="top" onclick="setImgMode('top')">Topo</button>
+      <button class="eh img-mode-btn${cfg.imgMode==='center'?' on':''}" data-mode="center" onclick="setImgMode('center')">Centro</button>
+      <button class="eh img-mode-btn${cfg.imgMode==='bottom'?' on':''}" data-mode="bottom" onclick="setImgMode('bottom')">Base</button>
+    </div>
+    <div class="row" style="margin-top:6px"><span class="row-lbl">Posição X</span><span class="row-val" id="vx">${cfg.imgX}</span></div>
+    <input type="range" class="sl" min="0" max="100" value="${cfg.imgX}" step="1" oninput="cfg.imgX=parseInt(this.value);document.getElementById('vx').textContent=this.value;updateSlides()">
+    <div class="row"><span class="row-lbl">Posição Y</span><span class="row-val" id="vy">${cfg.imgY}</span></div>
+    <input type="range" class="sl" min="0" max="100" value="${cfg.imgY}" step="1" oninput="cfg.imgY=parseInt(this.value);document.getElementById('vy').textContent=this.value;updateSlides()">
+    <div class="row"><span class="row-lbl">Zoom %</span><span class="row-val" id="vz">${cfg.imgZ}</span></div>
+    <input type="range" class="sl" min="50" max="300" value="${cfg.imgZ}" step="1" oninput="cfg.imgZ=parseInt(this.value);document.getElementById('vz').textContent=this.value;updateSlides()">
   </div></div>
   <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Sombra / Overlay</span><span class="sec-chev">▾</span></div>
   <div class="sec-body">
@@ -1006,7 +1039,7 @@ function renderEditorSide() {
       <button class="lgb${cfg.textPos==='Inf. Dir.'?' on':''}" onclick="setPos('Inf. Dir.')">Inf. Dir.</button>
     </div>
     <span class="sub-lbl">Alinhamento</span>
-    <div class="e3" style="margin-bottom:8px">
+    <div class="e3" id="align-btns" style="margin-bottom:8px">
       <button class="eh${cfg.textAlign==='left'?' on':''}" onclick="setAlign('left')">Esq.</button>
       <button class="eh${cfg.textAlign==='center'?' on':''}" onclick="setAlign('center')">Centro</button>
       <button class="eh${cfg.textAlign==='right'?' on':''}" onclick="setAlign('right')">Dir.</button>
@@ -1063,35 +1096,251 @@ function renderEditorSide() {
 }
 
 // ─── EDITOR CONTROLS ────────────────────────────────────────────────────
-function tog(hd) { const b = hd.nextElementSibling, c = hd.querySelector('.sec-chev'); b.classList.toggle('open'); c.classList.toggle('open', b.classList.contains('open')); }
-function swBtn(el) { el.parentElement.querySelectorAll('.eh').forEach(b => b.classList.remove('on')); el.classList.add('on'); }
+
+// Toggle accordion
+function tog(hd) {
+  const b = hd.nextElementSibling, c = hd.querySelector('.sec-chev');
+  b.classList.toggle('open');
+  c.classList.toggle('open', b.classList.contains('open'));
+}
+
+// Generic single-select button in a group
+function swBtn(el) {
+  el.parentElement.querySelectorAll('.eh').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+}
+
+// ── STYLE / THEME ──────────────────────────────────────────────────
+function setStyle(type) {
+  cfg.style = type;
+  document.getElementById('e-min')?.classList.toggle('on', type === 'minimal');
+  document.getElementById('e-pro')?.classList.toggle('on', type === 'profile');
+  // Profile adds round avatar placeholder at top; minimal is clean text
+  updateSlides();
+}
+
+function setTheme(theme) {
+  cfg.theme = theme;
+  if (theme === 'dark') {
+    if (cfg.bgType === 'none') { /* keep none but default bg goes dark */ }
+    if (cfg.bgType === 'solid') { cfg.solidColor = '#0f0520'; const h=document.getElementById('solid-hex'),p=document.getElementById('solid-prev'); if(h)h.value=cfg.solidColor; if(p)p.style.background=cfg.solidColor; }
+  } else {
+    if (cfg.bgType === 'none') { /* keep none, white bg */ }
+    if (cfg.bgType === 'solid') { cfg.solidColor = '#ffffff'; const h=document.getElementById('solid-hex'),p=document.getElementById('solid-prev'); if(h)h.value=cfg.solidColor; if(p)p.style.background=cfg.solidColor; }
+    cfg.titleColor = '#111111';
+    cfg.subColor = '#444444';
+  }
+  updateSlides();
+}
+
+// ── BACKGROUND COLOR ───────────────────────────────────────────────
 function setBgType(t) {
   cfg.bgType = t;
   ['none','solid','gradient'].forEach(x => document.getElementById('bg-'+x+'-btn')?.classList.toggle('on', x===t));
   const so = document.getElementById('bg-solid-opts'), go = document.getElementById('bg-grad-opts');
-  if (so) so.style.display = t==='solid'?'block':'none';
-  if (go) go.style.display = t==='gradient'?'block':'none';
+  if (so) so.style.display = t==='solid' ? 'block' : 'none';
+  if (go) go.style.display = t==='gradient' ? 'block' : 'none';
   updateSlides();
 }
-function selectSolid(c) { cfg.solidColor=c; const h=document.getElementById('solid-hex'),p=document.getElementById('solid-prev'); if(h)h.value=c; if(p)p.style.background=c; updateSlides(); }
-function setSolidCustom(v) { cfg.solidColor=v; const p=document.getElementById('solid-prev'); if(p)p.style.background=v; updateSlides(); }
-function setSolidFromNative(v) { cfg.solidColor=v; const h=document.getElementById('solid-hex'),p=document.getElementById('solid-prev'); if(h)h.value=v; if(p)p.style.background=v; updateSlides(); }
-function setPos(p) { cfg.textPos = p; document.querySelectorAll('#pos-grid .lgb').forEach(b => b.classList.toggle('on', b.textContent === (p==='center'?'Meio':p))); updateSlides(); }
-function setAlign(a) { cfg.textAlign = a; const map={left:'Esq.',center:'Centro',right:'Dir.'}; document.querySelectorAll('.e3 button').forEach(b => { if(['Esq.','Centro','Dir.'].includes(b.textContent)) b.classList.toggle('on', b.textContent === map[a]); }); updateSlides(); }
+
+function selectSolid(c) {
+  cfg.solidColor = c;
+  const h = document.getElementById('solid-hex'), p = document.getElementById('solid-prev');
+  if (h) h.value = c; if (p) p.style.background = c;
+  updateSlides();
+}
+
+function setSolidCustom(v) {
+  cfg.solidColor = v;
+  const p = document.getElementById('solid-prev');
+  if (p) p.style.background = v;
+  updateSlides();
+}
+
+function setSolidFromNative(v) {
+  cfg.solidColor = v;
+  const h = document.getElementById('solid-hex'), p = document.getElementById('solid-prev');
+  if (h) h.value = v; if (p) p.style.background = v;
+  updateSlides();
+}
+
+function setGradDir(dir) {
+  cfg.gradDir = dir;
+  document.querySelectorAll('.gd').forEach(b => b.classList.remove('on'));
+  event?.target?.classList.add('on');
+  updateSlides();
+}
+
+function setGradColor(n, value) {
+  if (n === 1) { cfg.gradC1 = value; const p = document.getElementById('grad-p1'); if(p) p.style.background = value; }
+  else { cfg.gradC2 = value; const p = document.getElementById('grad-p2'); if(p) p.style.background = value; }
+  updateSlides();
+}
+
+function setGradFromNative(n, value) {
+  if (n === 1) { cfg.gradC1 = value; const h=document.getElementById('grad-c1'),p=document.getElementById('grad-p1'); if(h)h.value=value; if(p)p.style.background=value; }
+  else { cfg.gradC2 = value; const h=document.getElementById('grad-c2'),p=document.getElementById('grad-p2'); if(h)h.value=value; if(p)p.style.background=value; }
+  updateSlides();
+}
+
+function selectGradPreset(c1, c2) {
+  cfg.gradC1 = c1; cfg.gradC2 = c2;
+  const h1=document.getElementById('grad-c1'),p1=document.getElementById('grad-p1');
+  const h2=document.getElementById('grad-c2'),p2=document.getElementById('grad-p2');
+  if(h1)h1.value=c1; if(p1)p1.style.background=c1;
+  if(h2)h2.value=c2; if(p2)p2.style.background=c2;
+  updateSlides();
+}
+
+// ── COLOR PICKER (title, subtitle, CTA) ───────────────────────────
+function setCfgC(key, color, prevId, hexId) {
+  cfg[key] = color;
+  const p = document.getElementById(prevId);
+  if (p) p.style.background = color;
+  if (hexId) { const h = document.getElementById(hexId); if (h) h.value = color; }
+  updateSlides();
+}
+
+// ── IMAGE POSITION ─────────────────────────────────────────────────
+function setImgPos(x, y, z) {
+  cfg.imgX = parseInt(x); cfg.imgY = parseInt(y); cfg.imgZ = parseInt(z);
+  updateSlides();
+}
+
+function setImgMode(mode) {
+  cfg.imgMode = mode; // 'bg' | 'top' | 'bottom' | 'center'
+  document.querySelectorAll('.img-mode-btn').forEach(b => b.classList.remove('on'));
+  document.querySelector(`.img-mode-btn[data-mode="${mode}"]`)?.classList.add('on');
+  updateSlides();
+}
+
+// ── AI IMAGE WITH LOADING STATE ────────────────────────────────────
 async function generateSlideImage() {
-  const prompt = document.getElementById('ed-ttl')?.value || slides[curSl].t;
-  toast('Gerando imagem com IA para este slide...');
-  const seed = Math.floor(Math.random() * 999999);
-  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt + ', high quality, digital art, instagram post')}?width=1080&height=1350&seed=${seed}&model=flux&nologo=true`;
-  slides[curSl].imageUrl = url;
+  const prompt = document.getElementById('ed-ttl')?.value || slides[curSl]?.t || '';
+  const extraPrompt = document.getElementById('img-ai-prompt')?.value?.trim() || '';
+  const fullPrompt = extraPrompt ? `${prompt}, ${extraPrompt}` : `${prompt}, high quality, digital art, cinematic, instagram post`;
+
+  // Show loading state on card
+  slides[curSl].imageLoading = true;
+  slides[curSl].imageUrl = null;
   updateSlides();
-  toast('✅ Imagem gerada!');
+  toast('⏳ Gerando imagem com IA...');
+
+  const seed = Math.floor(Math.random() * 999999);
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1080&height=1350&seed=${seed}&model=flux&nologo=true`;
+
+  // Preload image before showing
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    slides[curSl].imageLoading = false;
+    slides[curSl].imageUrl = url;
+    updateSlides();
+    toast('✅ Imagem gerada!');
+  };
+  img.onerror = () => {
+    slides[curSl].imageLoading = false;
+    updateSlides();
+    toast('❌ Erro ao gerar imagem. Tente novamente.', true);
+  };
+  img.src = url;
 }
-function setCTAStyle(s) { cfg.ctaStyle=s; document.getElementById('cta-solid')?.classList.toggle('on',s==='solid'); document.getElementById('cta-outline')?.classList.toggle('on',s==='outline'); updateSlides(); }
-function setCTAAlign(a) { cfg.ctaAlign=a; ['l','c','r'].forEach(x=>document.getElementById('cta-al-'+x)?.classList.remove('on')); document.getElementById('cta-al-'+a[0])?.classList.add('on'); updateSlides(); }
-function toggleLogo() { cfg.logoOn=!cfg.logoOn; const t=document.getElementById('logo-toggle'),o=document.getElementById('logo-opts'); if(t)t.classList.toggle('on',cfg.logoOn); if(o)o.style.display=cfg.logoOn?'block':'none'; updateSlides(); }
-function setLogoPos(p) { cfg.logoPos=p; document.getElementById('logo-top')?.classList.toggle('on',p==='top'); document.getElementById('logo-bot')?.classList.toggle('on',p==='bottom'); updateSlides(); }
-function setLogoAlign(a) { cfg.logoAlign=a; ['l','c','r'].forEach(x=>document.getElementById('logo-al-'+x)?.classList.remove('on')); document.getElementById('logo-al-'+a[0])?.classList.add('on'); updateSlides(); }
+
+// ── GRID ────────────────────────────────────────────────────────────
+function toggleGrid() {
+  cfg.gridOn = !cfg.gridOn;
+  const t = document.getElementById('grid-tg'), o = document.getElementById('grid-opts');
+  if (t) t.classList.toggle('on', cfg.gridOn);
+  if (o) o.style.display = cfg.gridOn ? 'block' : 'none';
+  updateSlides();
+}
+
+function setGrid(btn, type) {
+  cfg.gridType = type;
+  btn.closest('div')?.querySelectorAll('.eb').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  updateSlides();
+}
+
+// ── CTA ─────────────────────────────────────────────────────────────
+function toggleCTA() {
+  cfg.ctaOn = !cfg.ctaOn;
+  const t = document.getElementById('cta-toggle'), o = document.getElementById('cta-opts');
+  if (t) t.classList.toggle('on', cfg.ctaOn);
+  if (o) o.style.display = cfg.ctaOn ? 'block' : 'none';
+  updateSlides();
+}
+
+function setCTAStyle(s) {
+  cfg.ctaStyle = s;
+  document.getElementById('cta-solid')?.classList.toggle('on', s==='solid');
+  document.getElementById('cta-outline')?.classList.toggle('on', s==='outline');
+  updateSlides();
+}
+
+function setCTAAlign(a) {
+  cfg.ctaAlign = a;
+  ['l','c','r'].forEach(x => document.getElementById('cta-al-'+x)?.classList.remove('on'));
+  document.getElementById('cta-al-'+a[0])?.classList.add('on');
+  updateSlides();
+}
+
+// ── @ HANDLE ────────────────────────────────────────────────────────
+function setHandle(val) {
+  cfg.handle = val;
+  updateSlides();
+}
+
+function toggleHandle() {
+  cfg.handleOn = !cfg.handleOn;
+  const t = document.getElementById('handle-toggle');
+  if (t) t.classList.toggle('on', cfg.handleOn);
+  updateSlides();
+}
+
+// ── LOGO ─────────────────────────────────────────────────────────────
+function toggleLogo() {
+  cfg.logoOn = !cfg.logoOn;
+  const t = document.getElementById('logo-toggle'), o = document.getElementById('logo-opts');
+  if (t) t.classList.toggle('on', cfg.logoOn);
+  if (o) o.style.display = cfg.logoOn ? 'block' : 'none';
+  updateSlides();
+}
+
+function setLogoPos(p) {
+  cfg.logoPos = p;
+  document.getElementById('logo-top')?.classList.toggle('on', p==='top');
+  document.getElementById('logo-bot')?.classList.toggle('on', p==='bottom');
+  updateSlides();
+}
+
+function setLogoAlign(a) {
+  cfg.logoAlign = a;
+  ['l','c','r'].forEach(x => document.getElementById('logo-al-'+x)?.classList.remove('on'));
+  document.getElementById('logo-al-'+a[0])?.classList.add('on');
+  updateSlides();
+}
+
+// ── POSITION & ALIGN ─────────────────────────────────────────────────
+function setPos(p) {
+  cfg.textPos = p;
+  document.querySelectorAll('#pos-grid .lgb').forEach(b => {
+    const label = b.textContent.trim();
+    const match = p === 'center' ? label === 'Meio' : label === p;
+    b.classList.toggle('on', match);
+  });
+  updateSlides();
+}
+
+function setAlign(a) {
+  cfg.textAlign = a;
+  const map = { left: 'Esq.', center: 'Centro', right: 'Dir.' };
+  document.querySelectorAll('#align-btns .eh').forEach(b => {
+    b.classList.toggle('on', b.textContent.trim() === map[a]);
+  });
+  updateSlides();
+}
+
 
 async function refineSlide() {
   const title = document.getElementById('ed-ttl')?.value;
