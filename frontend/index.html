@@ -924,11 +924,11 @@ function getSlideHTML(s, i, active) {
   const logoHTML = globalCfg.logoOn ? `<div style="display:flex;justify-content:${jcLogo};padding:${mg/2}px ${mg}px;width:100%"><div style="height:${ls}px;${isProfile?'width:'+ls+'px;border-radius:50%':'padding:0 12px;border-radius:6px'};background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:${Math.max(10,Math.round(ls*.38))}px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:.05em;border:1px solid rgba(255,255,255,0.2)">${isProfile?'?':'LOGO'}</div></div>` : '';
   const ctaHTML = sc.ctaOn ? `<div style="display:flex;justify-content:${jcCTA};margin-top:14px"><div style="font-size:12px;padding:6px 14px;border-radius:6px;font-weight:700;background:${sc.ctaStyle==='solid'?sc.ctaColor:'transparent'};border:${sc.ctaStyle==='outline'?'1px solid '+sc.ctaColor:'none'};color:${sc.ctaStyle==='outline'?sc.ctaColor:'#fff'}">${sc.ctaText}</div></div>` : '';
   const loadingTag = sc.imageLoading ? `<div style="position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)"><svg width="36" height="36" viewBox="0 0 50 50" style="animation:spin 1s linear infinite"><circle cx="25" cy="25" r="20" fill="none" stroke="#a78bfa" stroke-width="4" stroke-dasharray="60 40"/></svg></div>` : '';
+  const crossAttr = sc.imageUrl && !sc.imageUrl.startsWith('data:') ? 'crossorigin="anonymous"' : '';
 
   if (sc.imageUrl && sc.imgMode === 'bg') {
-    imgHTML = `<div class="s-img" style="position:absolute;inset:0;background-image:url('${sc.imageUrl}');background-size:cover;background-position:${sc.imgX}% ${sc.imgY}%;background-repeat:no-repeat;transform:scale(${sc.imgZ/100});transform-origin:center;z-index:0"></div>`;
+    imgHTML = `<img class="s-img" src="${sc.imageUrl}" ${crossAttr} style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:${sc.imgX}% ${sc.imgY}%;transform:scale(${sc.imgZ/100});transform-origin:${sc.imgX}% ${sc.imgY}%;z-index:0" onerror="this.style.display='none'">`;
   } else if (sc.imageUrl && sc.imgMode !== 'bg') {
-    const crossAttr = sc.imageUrl.startsWith('data:') ? '' : 'crossorigin="anonymous"';
     const ratio = sc.imgRatio === '16:9' ? '56.25%' : '125%'; // 4:5 is 125% height relative to width
     const jcMap = { top: 'flex-start', center: 'center', bottom: 'flex-end' };
     const aiMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
@@ -937,7 +937,7 @@ function getSlideHTML(s, i, active) {
     
     imgHTML = `<div style="position:absolute;inset:0;z-index:0;display:flex;flex-direction:column;justify-content:${imgJC};align-items:${imgAI};pointer-events:none;padding:${mg}px;box-sizing:border-box">
       <div style="width:100%;max-height:100%;padding-top:${ratio};position:relative;overflow:hidden;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.3)">
-        <img src="${sc.imageUrl}" ${crossAttr} style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">
+        <img src="${sc.imageUrl}" ${crossAttr} style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:${sc.imgX}% ${sc.imgY}%;transform:scale(${sc.imgZ/100});transform-origin:${sc.imgX}% ${sc.imgY}%" onerror="this.style.display='none'">
       </div>
     </div>`;
   }
@@ -1145,14 +1145,13 @@ function renderEditorSide() {
       <button class="eh${cfg.imgMode==='block'?' on':''}" onclick="setImgMode('block')">Bloco (Imagem)</button>
     </div>
     
-    <div style="display:${cfg.imgMode==='bg'?'block':'none'}">
-      <div class="row"><span class="row-lbl">Zoom</span><span class="row-val" id="v-iz">${cfg.imgZ}%</span></div>
-      <input type="range" class="sl" min="100" max="350" value="${cfg.imgZ}" oninput="cfg.imgZ=parseInt(this.value);document.getElementById('v-iz').textContent=this.value+'%';updateSlides()">
-      <div class="row"><span class="row-lbl">Posição X</span><span class="row-val" id="v-ix">${cfg.imgX}%</span></div>
-      <input type="range" class="sl" min="0" max="100" value="${cfg.imgX}" oninput="cfg.imgX=parseInt(this.value);document.getElementById('v-ix').textContent=this.value+'%';updateSlides()">
-      <div class="row"><span class="row-lbl">Posição Y</span><span class="row-val" id="v-iy">${cfg.imgY}%</span></div>
-      <input type="range" class="sl" min="0" max="100" value="${cfg.imgY}" oninput="cfg.imgY=parseInt(this.value);document.getElementById('v-iy').textContent=this.value+'%';updateSlides()">
-    </div>
+    <span class="sub-lbl">Ajuste de corte</span>
+    <div class="row"><span class="row-lbl">Zoom</span><span class="row-val" id="v-iz">${cfg.imgZ}%</span></div>
+    <input type="range" class="sl" min="100" max="350" value="${cfg.imgZ}" oninput="cfg.imgZ=parseInt(this.value);document.getElementById('v-iz').textContent=this.value+'%';updateSlides()">
+    <div class="row"><span class="row-lbl">Posição X</span><span class="row-val" id="v-ix">${cfg.imgX}%</span></div>
+    <input type="range" class="sl" min="0" max="100" value="${cfg.imgX}" oninput="cfg.imgX=parseInt(this.value);document.getElementById('v-ix').textContent=this.value+'%';updateSlides()">
+    <div class="row"><span class="row-lbl">Posição Y</span><span class="row-val" id="v-iy">${cfg.imgY}%</span></div>
+    <input type="range" class="sl" min="0" max="100" value="${cfg.imgY}" oninput="cfg.imgY=parseInt(this.value);document.getElementById('v-iy').textContent=this.value+'%';updateSlides()">
 
     <div style="display:${cfg.imgMode==='block'?'block':'none'}">
        <span class="sub-lbl">Alinhamento (3x3)</span>
