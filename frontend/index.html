@@ -922,11 +922,8 @@ function getSlideHTML(s, i, active) {
   const ctaHTML = sc.ctaOn ? `<div style="display:flex;justify-content:${jcCTA};margin-top:14px"><div style="font-size:12px;padding:6px 14px;border-radius:6px;font-weight:700;background:${sc.ctaStyle==='solid'?sc.ctaColor:'transparent'};border:${sc.ctaStyle==='outline'?'1px solid '+sc.ctaColor:'none'};color:${sc.ctaStyle==='outline'?sc.ctaColor:'#fff'}">${sc.ctaText}</div></div>` : '';
   const loadingTag = sc.imageLoading ? `<div style="position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)"><svg width="36" height="36" viewBox="0 0 50 50" style="animation:spin 1s linear infinite"><circle cx="25" cy="25" r="20" fill="none" stroke="#a78bfa" stroke-width="4" stroke-dasharray="60 40"/></svg></div>` : '';
 
-  // Image rendering: bg (cover) or positioned block inside card
-  let imgHTML = '';
   if (sc.imageUrl && sc.imgMode === 'bg') {
-    const crossAttr = sc.imageUrl.startsWith('data:') ? '' : 'crossorigin="anonymous"';
-    imgHTML = `<img class="s-img" src="${sc.imageUrl}" ${crossAttr} style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:${sc.imgX}% ${sc.imgY}%;transform:scale(${sc.imgZ/100});transform-origin:center;z-index:0" onerror="this.style.display='none'">`;
+    imgHTML = `<div class="s-img" style="position:absolute;inset:0;background-image:url('${sc.imageUrl}');background-size:cover;background-position:${sc.imgX}% ${sc.imgY}%;background-repeat:no-repeat;transform:scale(${sc.imgZ/100});transform-origin:center;z-index:0"></div>`;
   } else if (sc.imageUrl && sc.imgMode !== 'bg') {
     const crossAttr = sc.imageUrl.startsWith('data:') ? '' : 'crossorigin="anonymous"';
     const ratio = sc.imgRatio === '16:9' ? '56.25%' : '125%'; // 4:5 is 125% height relative to width
