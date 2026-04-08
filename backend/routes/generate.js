@@ -58,8 +58,8 @@ router.post('/caption', async (req, res) => {
     const { slides, niche = '' } = req.body;
     if (!slides?.length) return res.status(400).json({ error: 'Nenhum slide enviado.' });
 
-    const caption = await geminiService.generateCaption(slides, niche);
-    return res.json({ success: true, caption });
+    const captionData = await geminiService.generateCaption(slides, niche);
+    return res.json({ success: true, caption: captionData.caption, hashtags: captionData.hashtags });
   } catch (err) {
     console.error('Erro na legenda:', err);
     return res.status(500).json({ error: 'Erro ao gerar legenda.' });

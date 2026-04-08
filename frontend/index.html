@@ -76,7 +76,9 @@ nav{display:flex;align-items:center;height:48px;background:var(--bg2);border-bot
 .sec-l{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mu)}
 .sec-a{font-size:11px;color:var(--mu2);cursor:pointer}
 .sec-a:hover{color:var(--ac)}
-.cc-row{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px}
+.cc-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-top:14px;min-height:200px}
+.hist-card{transition:transform .2s,border-color .2s;background:var(--bg2)}
+.hist-card:hover{transform:translateY(-4px);border-color:var(--ac)}
 .cc-row::-webkit-scrollbar{height:3px}
 .cc-row::-webkit-scrollbar-thumb{background:var(--bd)}
 .ccard{flex:0 0 182px;background:var(--bg2);border:1px solid var(--bd);border-radius:9px;overflow:hidden;cursor:pointer;transition:all .18s}
@@ -415,24 +417,67 @@ let genStep = 1;
 let selN = 5, selIO = 0, selF = 0, selC = -1;
 let genImageMode = 'none';
 
-const cfg = {
-  style: 'minimal', theme: 'dark',
+// ── PER-SLIDE DEFAULT CONFIG ────────────────────────────────────────
+const defaultSlideCfg = () => ({
   bgType: 'none', solidColor: '#0f0520',
   gradDir: 'to bottom', gradC1: '#0f0520', gradC2: '#1a0050',
   gridOn: false, gridType: 'none', gridColor: '#ffffff',
   titleColor: '#ffffff', subColor: '#cccccc',
+  titleFont: 'Space Grotesk', bodyFont: 'Inter',
   ctaOn: false, ctaText: 'Saiba mais →', ctaStyle: 'solid', ctaColor: '#7c3aed', ctaAlign: 'left',
-  logoOn: false, logoPos: 'top', logoAlign: 'left', logoSize: 28,
   paddingH: 30, paddingV: 40, margin: 24, textAlign: 'center', textPos: 'center',
   overlayOp: 80, overlayType: 'gradient',
+  imgX: 50, imgY: 50, imgZ: 175, imgMode: 'bg', imgRatio: '4:5',
+  imgAlignH: 'center', imgAlignV: 'center',
+  imageUrl: null, imageLoading: false
+});
+
+// ── GLOBAL CONFIG (applies to all slides) ──────────────────────────
+const globalCfg = {
+  style: 'minimal',
   handleOn: true, handle: '@seuarroba',
-  imgX: 50, imgY: 50, imgZ: 175, imgMode: 'bg'
+  brandOn: true, brand: 'TCA PostFlow',
+  logoOn: false, logoPos: 'top', logoAlign: 'left', logoSize: 28,
 };
+
+// ── CFG PROXY: reads/writes to slides[curSl].cfg automatically ──────
+// All existing functions use "cfg.xxx" and continue to work unchanged.
+// The per-slide architecture is transparent to the rest of the code.
+const cfg = new Proxy({}, {
+  get(_, key) {
+    if (key in globalCfg) return globalCfg[key];
+    return slides[curSl]?.cfg?.[key];
+  },
+  set(_, key, value) {
+    if (key in globalCfg) { globalCfg[key] = value; return true; }
+    if (slides[curSl]?.cfg) slides[curSl].cfg[key] = value;
+    return true;
+  }
+});
+
+// Load Google Fonts dynamically
+function loadFont(fontName) {
+  if (!fontName) return;
+  const id = 'gf-' + fontName.replace(/\s+/g,'_');
+  if (document.getElementById(id)) return;
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(fontName)}:wght@400;600;700;800&display=swap`;
+  document.head.appendChild(link);
+}
 
 const PALETTE = ['#ffffff','#a78bfa','#7c3aed','#eab308','#ef4444','#22c55e','#3b82f6','#f97316','#ec4899','#000000'];
 const SOLID_PRESETS = ['#000000','#0f0520','#051020','#021508','#150005','#1a1a1a','#1e1b4b','#0c4a6e','#14532d','#450a0a','#431407','#1c1917'];
 const GRAD_PRESETS = [['#0f0520','#1a0050'],['#051020','#0c4a6e'],['#021508','#14532d'],['#150005','#450a0a'],['#000000','#1e1b4b'],['#0a0a0a','#431407'],['#1a0030','#0a1a40'],['#001a10','#1a2000'],['#200010','#100020'],['#0d0d0d','#2a2a2a'],['#7c3aed','#0f0520'],['#1d4ed8','#0f0520']];
-const FONTS = [{n:'Space',s:'Inter'},{n:'Playfair',s:'DM Sans'},{n:'Syne',s:'Outfit'},{n:'Oswald',s:'Inter'},{n:'Raleway',s:'Playfair'},{n:'Outfit',s:'Geist'}];
+const FONTS = [
+  {n:'Space Grotesk', s:'Inter', label:'Space'},
+  {n:'Playfair Display', s:'DM Sans', label:'Playfair'},
+  {n:'Syne', s:'Outfit', label:'Syne'},
+  {n:'Oswald', s:'Inter', label:'Oswald'},
+  {n:'Raleway', s:'DM Sans', label:'Raleway'},
+  {n:'Outfit', s:'Lato', label:'Outfit'}
+];
 const IOPTS = [{i:'🚫',l:'Sem imagens'},{i:'🖼',l:'Só imagem de fundo'},{i:'⊞',l:'Só grade'},{i:'↕',l:'Intercalar'}];
 const IOVALS = ['none','background','grid','both'];
 const COLORS = ['#eab308','#ef4444','#3b82f6','#22c55e','#f97316','#a855f7','#ec4899','#06b6d4'];
@@ -645,7 +690,11 @@ async function doGenerate() {
 
     setTimeout(() => {
       pb.classList.remove('on');
-      slides = d.carousel.slides.map(s => ({ t: s.title, b: s.body, defaultBg: '#0f0520', imageUrl: s.imageUrl || null }));
+      slides = d.carousel.slides.map(s => ({
+        t: s.title,
+        b: s.body,
+        cfg: { ...defaultSlideCfg(), imageUrl: s.imageUrl || null }
+      }));
       curSl = 0;
 
       // Salva no histórico
@@ -657,6 +706,7 @@ async function doGenerate() {
       renderHistory();
 
       goV('editor');
+      renderEditorSide();
       toast('✦ Carrossel gerado com sucesso!');
     }, 600);
 
@@ -692,12 +742,14 @@ async function openCaptionModal() {
       document.getElementById('caption-text').textContent = d.caption;
       document.getElementById('caption-hashtags').innerHTML = (d.hashtags || []).map(h => `<div class="ht">${h.startsWith('#') ? h : '#'+h}</div>`).join('');
     } else {
-      document.getElementById('caption-text').textContent = 'Erro ao gerar legenda.';
+      const errMsg = typeof d.error === 'object' ? JSON.stringify(d.error) : (d.error || 'Erro ao gerar legenda.');
+      document.getElementById('caption-text').textContent = errMsg;
     }
-  } catch {
+  } catch(e) {
     document.getElementById('caption-text').textContent = 'Sem conexão com o backend.';
   }
 }
+
 
 function copyCaption() {
   const cap = document.getElementById('caption-text').textContent;
@@ -709,23 +761,21 @@ async function downloadZip() {
   const btn = document.getElementById('zip-btn');
   const oldText = btn.textContent;
   btn.textContent = 'Renderizando...'; btn.disabled = true;
-  toast('Iniciando exportação do carrossel...');
-  
+  toast('Iniciando exportação do carrossel em Alta Qualidade...');
   try {
+    await document.fonts.ready;
     const zip = new JSZip();
     const area = document.getElementById('slides-area');
     const cards = area.querySelectorAll('.sf');
-    
     for (let i = 0; i < cards.length; i++) {
       const canvas = await html2canvas(cards[i], {
-        scale: 2, // 2x para melhor qualidade
-        useCORS: true,
-        backgroundColor: null
+        scale: 3, useCORS: true, allowTaint: false,
+        backgroundColor: null,
+        onclone: (doc, el) => { el.style.borderRadius = '0'; el.style.overflow = 'hidden'; el.style.border = 'none'; }
       });
       const data = canvas.toDataURL('image/png').split(',')[1];
       zip.file(`slide-${i+1}.png`, data, {base64: true});
     }
-    
     const content = await zip.generateAsync({type:"blob"});
     const link = document.createElement('a');
     link.href = URL.createObjectURL(content);
@@ -734,7 +784,7 @@ async function downloadZip() {
     toast('✅ Download do ZIP concluído!');
   } catch (e) {
     console.error(e);
-    toast('Erro ao gerar ZIP. Verifique permissões do navegador.', true);
+    toast('Erro ao gerar ZIP.', true);
   } finally {
     btn.textContent = oldText; btn.disabled = false;
   }
@@ -744,10 +794,14 @@ async function downloadCurrentSlide() {
   const area = document.getElementById('slides-area');
   const card = area.querySelectorAll('.sf')[curSl];
   if (!card) return;
-  
-  toast('Exportando slide...');
+  toast('Exportando slide em Alta Qualidade...');
   try {
-    const canvas = await html2canvas(card, { scale: 2, useCORS: true });
+    await document.fonts.ready;
+    const canvas = await html2canvas(card, {
+      scale: 3, useCORS: true, allowTaint: false,
+      backgroundColor: null,
+      onclone: (doc, el) => { el.style.borderRadius = '0'; el.style.overflow = 'hidden'; el.style.border = 'none'; }
+    });
     const link = document.createElement('a');
     link.href = canvas.toDataURL('image/png');
     link.download = `slide-${curSl+1}.png`;
@@ -771,10 +825,10 @@ function updateStats() {
 }
 
 function renderHistory() {
-  const row = document.getElementById('cc-row');
-  if (!history.length) { row.innerHTML = '<div style="font-size:12px;color:var(--mu2);padding:20px 0">Nenhum carrossel gerado ainda. Clique em "Criar com IA" para começar.</div>'; return; }
+  const area = document.getElementById('cc-row'); if (!area) return;
+  if (!history.length) { area.innerHTML = '<div style="color:var(--mu2);padding:20px 0;font-size:12px">Nenhum carrossel criado ainda.</div>'; return; }
   const COLORS_BG = [['#0f0030','#200060'],['#001a00','#003300'],['#001020','#002040'],['#150020','#280040'],['#0a0a1e','#1a0050'],['#020a14','#051428']];
-  row.innerHTML = history.slice(0, 8).map((h, i) => {
+  area.innerHTML = history.slice(0, 8).map((h, i) => {
     const [c1, c2] = COLORS_BG[i % COLORS_BG.length];
     const title = h.slides?.[0]?.t || h.prompt?.substring(0, 40).toUpperCase() || 'CARROSSEL';
     const ago = timeAgo(h.createdAt);
@@ -799,9 +853,14 @@ function renderHistory() {
 function loadHistory(id) {
   const h = history.find(x => x.id === id);
   if (!h) return;
-  slides = h.slides.map(s => ({ t: s.t || s.title, b: s.b || s.body, defaultBg: '#0f0520', imageUrl: s.imageUrl || null }));
+  slides = h.slides.map(s => ({
+    t: s.t || s.title,
+    b: s.b || s.body,
+    cfg: s.cfg ? { ...defaultSlideCfg(), ...s.cfg } : defaultSlideCfg()
+  }));
   curSl = 0;
   goV('editor');
+  renderEditorSide();
 }
 
 function deleteHistory(id) {
@@ -819,80 +878,98 @@ function timeAgo(iso) {
 }
 
 // ─── SLIDES ─────────────────────────────────────────────────────────────
-function getGridCSS() {
-  if (!cfg.gridOn || cfg.gridType === 'none') return '';
-  const vgop = document.getElementById('vgop');
-  const op = parseInt(vgop?.value || 10) / 100;
-  const rgba = `rgba(255,255,255,${op})`;
+function getGridCSS(sc) {
+  if (!sc.gridOn || sc.gridType === 'none') return '';
+  const op = (sc.overlayOp || 10) / 100;
+  const rgba = `rgba(255,255,255,${op * 0.3})`;
   const p = { quad:`repeating-linear-gradient(${rgba} 0 1px,transparent 1px 20px),repeating-linear-gradient(90deg,${rgba} 0 1px,transparent 1px 20px)`, dot:`radial-gradient(circle,${rgba} 1px,transparent 1px)`, hz:`repeating-linear-gradient(${rgba} 0 1px,transparent 1px 18px)`, diag:`repeating-linear-gradient(45deg,${rgba} 0 1px,transparent 1px 16px)`, xd:`repeating-linear-gradient(45deg,${rgba} 0 1px,transparent 1px 12px),repeating-linear-gradient(-45deg,${rgba} 0 1px,transparent 1px 12px)` };
-  return p[cfg.gridType] || '';
+  return p[sc.gridType] || '';
 }
 function getSlideBg(s) {
-  if (cfg.bgType === 'solid') return cfg.solidColor;
-  if (cfg.bgType === 'gradient') return `linear-gradient(${cfg.gradDir},${cfg.gradC1},${cfg.gradC2})`;
-  return s.defaultBg || '#0f0520';
+  const sc = s.cfg || {};
+  if (sc.bgType === 'solid') return sc.solidColor;
+  if (sc.bgType === 'gradient') return `linear-gradient(${sc.gradDir},${sc.gradC1},${sc.gradC2})`;
+  return '#0f0520';
 }
 function getSlideHTML(s, i, active) {
-  const ph = cfg.paddingH;
-  const pv = cfg.paddingV;
-  const mg = cfg.margin;
-  const ls = cfg.logoSize;
-  const gridCSS = getGridCSS();
+  // sc = this slide's config
+  const sc = s.cfg || defaultSlideCfg();
+  if (sc.font) loadFont(sc.font);
+  const ph = sc.paddingH;
+  const pv = sc.paddingV;
+  const mg = sc.margin;
+  const ls = globalCfg.logoSize;
+  const gridCSS = getGridCSS(sc);
+  if (sc.titleFont) loadFont(sc.titleFont);
+  if (sc.bodyFont) loadFont(sc.bodyFont);
+  const tStyle = sc.titleFont ? `font-family:'${sc.titleFont}', sans-serif;` : '';
+  const bStyle = sc.bodyFont ? `font-family:'${sc.bodyFont}', sans-serif;` : '';
+  const fStyle = tStyle; // Fallback or global base style
   const bg = getSlideBg(s);
-  const jcLogo = cfg.logoAlign==='center'?'center':cfg.logoAlign==='right'?'flex-end':'flex-start';
-  const jcCTA = cfg.ctaAlign==='center'?'center':cfg.ctaAlign==='right'?'flex-end':'flex-start';
+  const jcLogo = globalCfg.logoAlign==='center'?'center':globalCfg.logoAlign==='right'?'flex-end':'flex-start';
+  const jcCTA = sc.ctaAlign==='center'?'center':sc.ctaAlign==='right'?'flex-end':'flex-start';
   const title = s.t;
   const sub = s.b;
-  
-  const logoHTML = cfg.logoOn ? `<div style="display:flex;justify-content:${jcLogo};padding:${mg/2}px ${mg}px;width:100%"><div style="height:${ls}px;padding:0 12px;background:rgba(255,255,255,.15);border-radius:6px;display:flex;align-items:center;font-size:${Math.max(10,Math.round(ls*.38))}px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:.05em">LOGO</div></div>` : '';
-  const ctaHTML = cfg.ctaOn ? `<div style="display:flex;justify-content:${jcCTA};margin-top:14px"><div style="font-size:12px;padding:6px 14px;border-radius:6px;font-weight:700;background:${cfg.ctaStyle==='solid'?cfg.ctaColor:'transparent'};border:${cfg.ctaStyle==='outline'?'1px solid '+cfg.ctaColor:'none'};color:${cfg.ctaStyle==='outline'?cfg.ctaColor:'#fff'}">${cfg.ctaText}</div></div>` : '';
-  const loadingTag = s.imageLoading ? `<div style="position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)"><svg width="36" height="36" viewBox="0 0 50 50" style="animation:spin 1s linear infinite"><circle cx="25" cy="25" r="20" fill="none" stroke="#a78bfa" stroke-width="4" stroke-dasharray="60 40"/></svg></div>` : '';
 
-  // Image rendering: bg (cover) or positioned (top/bottom/center)
+  const logoHTML = globalCfg.logoOn ? `<div style="display:flex;justify-content:${jcLogo};padding:${mg/2}px ${mg}px;width:100%"><div style="height:${ls}px;padding:0 12px;background:rgba(255,255,255,.15);border-radius:6px;display:flex;align-items:center;font-size:${Math.max(10,Math.round(ls*.38))}px;font-weight:700;color:rgba(255,255,255,.9);letter-spacing:.05em">LOGO</div></div>` : '';
+  const ctaHTML = sc.ctaOn ? `<div style="display:flex;justify-content:${jcCTA};margin-top:14px"><div style="font-size:12px;padding:6px 14px;border-radius:6px;font-weight:700;background:${sc.ctaStyle==='solid'?sc.ctaColor:'transparent'};border:${sc.ctaStyle==='outline'?'1px solid '+sc.ctaColor:'none'};color:${sc.ctaStyle==='outline'?sc.ctaColor:'#fff'}">${sc.ctaText}</div></div>` : '';
+  const loadingTag = sc.imageLoading ? `<div style="position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5)"><svg width="36" height="36" viewBox="0 0 50 50" style="animation:spin 1s linear infinite"><circle cx="25" cy="25" r="20" fill="none" stroke="#a78bfa" stroke-width="4" stroke-dasharray="60 40"/></svg></div>` : '';
+
+  // Image rendering: bg (cover) or positioned block inside card
   let imgHTML = '';
-  if (s.imageUrl && cfg.imgMode === 'bg') {
-    imgHTML = `<img class="s-img" src="${s.imageUrl}" crossorigin="anonymous" style="object-fit:cover;object-position:${cfg.imgX}% ${cfg.imgY}%;transform:scale(${cfg.imgZ/100})" onerror="this.style.display='none'">`;
-  } else if (s.imageUrl && cfg.imgMode !== 'bg') {
-    const posStyle = cfg.imgMode === 'top' ? 'top:0;left:0;right:0;object-fit:cover;height:50%' : cfg.imgMode === 'bottom' ? 'bottom:40px;left:0;right:0;object-fit:cover;height:50%' : 'top:50%;left:0;right:0;object-fit:cover;height:40%;transform:translateY(-50%)';
-    imgHTML = `<img src="${s.imageUrl}" crossorigin="anonymous" style="position:absolute;${posStyle};z-index:0" onerror="this.style.display='none'">`;
+  if (sc.imageUrl && sc.imgMode === 'bg') {
+    const crossAttr = sc.imageUrl.startsWith('data:') ? '' : 'crossorigin="anonymous"';
+    imgHTML = `<img class="s-img" src="${sc.imageUrl}" ${crossAttr} style="object-fit:cover;object-position:${sc.imgX}% ${sc.imgY}%;transform-origin:center;transform:scale(${sc.imgZ/100})" onerror="this.style.display='none'">`;
+  } else if (sc.imageUrl && sc.imgMode !== 'bg') {
+    const crossAttr = sc.imageUrl.startsWith('data:') ? '' : 'crossorigin="anonymous"';
+    const ratio = sc.imgRatio === '16:9' ? '56.25%' : '100%'; // percent of width
+    const jcMap = { top: 'flex-start', center: 'center', bottom: 'flex-end' };
+    const aiMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
+    const imgJC = jcMap[sc.imgAlignV || 'center'] || 'center';
+    const imgAI = aiMap[sc.imgAlignH || 'center'] || 'center';
+    
+    imgHTML = `<div style="position:absolute;inset:0;z-index:0;display:flex;flex-direction:column;justify-content:${imgJC};align-items:${imgAI};pointer-events:none;padding:${mg}px">
+      <div style="width:100%;padding-top:${ratio};position:relative;overflow:hidden;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.3)">
+        <img src="${sc.imageUrl}" ${crossAttr} style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">
+      </div>
+    </div>`;
   }
 
   // Posicionamento do conteúdo
-  let contentJC = 'center'; // Vertical
-  if (cfg.textPos.includes('Sup')) contentJC = 'flex-start';
-  if (cfg.textPos.includes('Inf')) contentJC = 'flex-end';
-  if (cfg.textPos === 'center') contentJC = 'center';
-
-  let contentAI = 'center'; // Horizontal
-  if (cfg.textPos.includes('Esq')) contentAI = 'flex-start';
-  if (cfg.textPos.includes('Dir')) contentAI = 'flex-end';
+  let contentJC = 'center';
+  if (sc.textPos?.includes('Sup')) contentJC = 'flex-start';
+  if (sc.textPos?.includes('Inf')) contentJC = 'flex-end';
+  if (sc.textPos === 'center') contentJC = 'center';
+  let contentAI = 'center';
+  if (sc.textPos?.includes('Esq')) contentAI = 'flex-start';
+  if (sc.textPos?.includes('Dir')) contentAI = 'flex-end';
 
   // Sombra Overlay
-  const oOp = cfg.overlayOp / 100;
+  const oOp = (sc.overlayOp || 80) / 100;
   let overlayCSS = 'none';
-  if (cfg.overlayType === 'gradient') overlayCSS = `linear-gradient(to top, rgba(0,0,0,${oOp}) 0%, rgba(0,0,0,0) 70%)`;
-  else if (cfg.overlayType === 'top') overlayCSS = `linear-gradient(to bottom, rgba(0,0,0,${oOp}) 0%, rgba(0,0,0,0) 40%), linear-gradient(to top, rgba(0,0,0,${oOp}) 0%, rgba(0,0,0,0) 40%)`;
-  else if (cfg.overlayType === 'full') overlayCSS = `rgba(0,0,0,${oOp})`;
+  if (sc.overlayType === 'gradient') overlayCSS = `linear-gradient(to top, rgba(0,0,0,${oOp}) 0%, rgba(0,0,0,0) 70%)`;
+  else if (sc.overlayType === 'top') overlayCSS = `linear-gradient(to bottom, rgba(0,0,0,${oOp}) 0%, rgba(0,0,0,0) 40%), linear-gradient(to top, rgba(0,0,0,${oOp}) 0%, rgba(0,0,0,0) 40%)`;
+  else if (sc.overlayType === 'full') overlayCSS = `rgba(0,0,0,${oOp})`;
 
   return `<div class="sw${active?' on':''}" onclick="selSl(${i})">
     <div class="sf" style="background:${bg}">
       ${imgHTML}
       ${loadingTag}
-      ${gridCSS?`<div style="position:absolute;inset:0;background-image:${gridCSS};background-size:${cfg.gridType==='dot'?'16px 16px':'auto'};pointer-events:none;z-index:1"></div>`:''}
+      ${gridCSS?`<div style="position:absolute;inset:0;background-image:${gridCSS};background-size:${sc.gridType==='dot'?'16px 16px':'auto'};pointer-events:none;z-index:1"></div>`:''}
       ${overlayCSS !== 'none' ? `<div style="position:absolute;inset:0;background:${overlayCSS};pointer-events:none;z-index:2"></div>` : ''}
-      <div style="position:absolute;top:0;left:0;right:0;z-index:4">${cfg.logoOn&&cfg.logoPos==='top'?logoHTML:''}</div>
-      ${cfg.handleOn ? `<div style="position:absolute;top:14px;left:18px;font-size:11px;color:rgba(255,255,255,.6);font-weight:500;z-index:4">${cfg.handle||'@seuarroba'}</div>` : ''}
-      <div class="s-content" style="z-index:3; justify-content:${contentJC}; align-items:${contentAI}">
-        <div style="padding:${pv}px ${ph}px; margin:${mg/2}px; text-align:${cfg.textAlign}; width:100%">
-          <div class="s-ttl" style="color:${cfg.titleColor}">${title}</div>
-          <div class="s-sub" style="color:${cfg.subColor}">${sub}</div>
+      <div style="position:absolute;top:0;left:0;right:0;z-index:4">${globalCfg.logoOn&&globalCfg.logoPos==='top'?logoHTML:''}</div>
+      ${globalCfg.handleOn ? `<div style="position:absolute;top:14px;left:18px;font-size:11px;color:rgba(255,255,255,.6);font-weight:500;z-index:4">${globalCfg.handle||'@seuarroba'}</div>` : ''}
+      <div class="s-content" style="z-index:3; justify-content:${contentJC}; align-items:${contentAI};">
+        <div style="padding:${pv}px ${ph}px; margin:${mg/2}px; text-align:${sc.textAlign}; width:100%">
+          <div class="s-ttl" style="color:${sc.titleColor}; ${tStyle}">${title}</div>
+          <div class="s-sub" style="color:${sc.subColor}; ${bStyle}">${sub}</div>
           ${ctaHTML}
         </div>
       </div>
       <div style="position:absolute;bottom:0;left:0;right:0;z-index:4">
-        ${cfg.logoOn&&cfg.logoPos==='bottom'?logoHTML:''}
+        ${globalCfg.logoOn&&globalCfg.logoPos==='bottom'?logoHTML:''}
         <div class="s-ft" style="padding:10px ${mg}px">
-          <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,.5)">TCA PostFlow</span>
+          <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,.5)">${globalCfg.brandOn ? globalCfg.brand : ''}</span>
           <div class="s-dots">${slides.map((_,j)=>`<div class="sd${j===i?' on':''}"></div>`).join('')}</div>
           <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,.5)">arrasta →</span>
         </div>
@@ -907,15 +984,20 @@ function renderSlides() {
   const ctr = document.getElementById('sl-ctr'); if (ctr) ctr.textContent = `Slide ${curSl+1} de ${slides.length}`;
   const zbtn = document.getElementById('zip-btn'); if (zbtn) zbtn.textContent = `⬇ ZIP (${slides.length})`;
   
-  // Atualizar inputs da barra lateral se existirem
   const ttl = document.getElementById('ed-ttl'); if (ttl) ttl.value = slides[curSl]?.t || '';
   const sub = document.getElementById('ed-sub'); if (sub) sub.value = slides[curSl]?.b || '';
 }
 function updateSlides() { renderSlides(); }
-function selSl(i) { curSl = i; renderSlides(); }
+function selSl(i) { curSl = i; renderSlides(); renderEditorSide(); }
 function prevSl() { if (curSl > 0) { curSl--; renderSlides(); } }
 function nextSl() { if (curSl < slides.length - 1) { curSl++; renderSlides(); } }
-function addSl() { slides.push({ t: 'NOVO SLIDE', b: 'Edite ou use a IA para gerar.', defaultBg: '#111' }); curSl = slides.length - 1; renderSlides(); }
+function addSl() {
+  const inheritedCfg = slides[curSl]?.cfg ? { ...slides[curSl].cfg, imageUrl: null, imageLoading: false } : defaultSlideCfg();
+  slides.push({ t: 'NOVO SLIDE', b: 'Edite ou use a IA para gerar.', cfg: inheritedCfg });
+  curSl = slides.length - 1;
+  renderSlides();
+  renderEditorSide();
+}
 function delSl() { if (slides.length > 1) { slides.splice(curSl, 1); curSl = Math.min(curSl, slides.length - 1); renderSlides(); } }
 function rmSl(i) { if (slides.length > 1) { slides.splice(i, 1); curSl = Math.min(curSl, slides.length - 1); renderSlides(); } }
 
@@ -929,162 +1011,150 @@ function renderEditorSide() {
   const PAL3 = PALETTE.map(c => `<div class="cdot" style="background:${c}" onclick="setCfgC('ctaColor','${c}','cta-prev','cta-hex')"></div>`).join('');
 
   side.innerHTML = `
-  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Estilo</span><span class="sec-chev open">▾</span></div>
+  <div style="padding:12px 18px;background:var(--bg3);border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center">
+    <span style="font-weight:700;color:var(--ac)">Slide ${curSl+1} <span style="font-weight:400;color:var(--mu2);font-size:11px">de ${slides.length}</span></span>
+    <div style="display:flex;gap:5px"><button class="ni" onclick="prevSl()">←</button><button class="ni" onclick="nextSl()">→</button></div>
+  </div>
+
+  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Estilo & Fontes</span><span class="sec-chev open">▾</span></div>
   <div class="sec-body open">
-    <div class="e2">
-      <button class="eb${cfg.style==='minimal'?' on':''}" id="e-min" onclick="setStyle('minimal')">Minimalista</button>
-      <button class="eb${cfg.style==='profile'?' on':''}" id="e-pro" onclick="setStyle('profile')">Profile</button>
+    <span class="sub-lbl" style="margin-top:0">Configuração Global</span>
+    <div class="e2" style="margin-bottom:10px">
+      <button class="eb${globalCfg.style==='minimal'?' on':''}" onclick="setStyle('minimal')">Minimalista</button>
+      <button class="eb${globalCfg.style==='profile'?' on':''}" onclick="setStyle('profile')">Profile</button>
     </div>
+    <span class="sub-lbl">Fonte do Título</span>
+    <select class="einp" onchange="cfg.titleFont=this.value;updateSlides()">
+      ${FONTS.map(f => `<option value="${f.n}" ${cfg.titleFont===f.n?'selected':''}>${f.label}</option>`).join('')}
+    </select>
+    <span class="sub-lbl">Fonte do Corpo</span>
+    <select class="einp" onchange="cfg.bodyFont=this.value;updateSlides()">
+      ${FONTS.map(f => `<option value="${f.n}" ${cfg.bodyFont===f.n?'selected':''}>${f.label}</option>`).join('')}
+    </select>
   </div></div>
-  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Fundo do Slide</span><span class="sec-chev open">▾</span></div>
-  <div class="sec-body open">
-    <div class="e2">
-      <button class="eh${cfg.theme!=='light'?' on':''}" onclick="setTheme('dark')">Escuro</button>
-      <button class="eh${cfg.theme==='light'?' on':''}" onclick="setTheme('light')">Claro</button>
-    </div>
-    <button class="eai" onclick="openGenModal()">✦ Gerar com IA ›</button>
+
+  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">@ e Assinatura</span><span class="sec-chev">▾</span></div>
+  <div class="sec-body">
+    <div class="tg-row"><span class="tg-lbl">Mostrar @</span><div class="tg${globalCfg.handleOn?' on':''}" onclick="toggleHandle()"></div></div>
+    <input class="einp" value="${globalCfg.handle||'@seuarroba'}" oninput="setHandle(this.value)" placeholder="@usuario">
+    <div class="tg-row" style="margin-top:10px"><span class="tg-lbl">Mostrar Assinatura (Esq.)</span><div class="tg${globalCfg.brandOn?' on':''}" onclick="globalCfg.brandOn=!globalCfg.brandOn;updateSlides();renderEditorSide()"></div></div>
+    <input class="einp" value="${globalCfg.brand||'TCA PostFlow'}" oninput="globalCfg.brand=this.value;updateSlides()" placeholder="Texto inferior">
   </div></div>
+
   <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Cor de Fundo</span><span class="sec-chev open">▾</span></div>
   <div class="sec-body open">
-    <span class="sub-lbl" style="margin-top:0">Tipo</span>
     <div class="e3" style="margin-bottom:8px">
-      <button class="eh${cfg.bgType==='none'?' on':''}" id="bg-none-btn" onclick="setBgType('none')">Nenhuma</button>
-      <button class="eh${cfg.bgType==='solid'?' on':''}" id="bg-solid-btn" onclick="setBgType('solid')">Sólida</button>
-      <button class="eh${cfg.bgType==='gradient'?' on':''}" id="bg-grad-btn" onclick="setBgType('gradient')">Degradê</button>
+      <button class="eh${cfg.bgType==='none'?' on':''}" onclick="setBgType('none')">Limpo</button>
+      <button class="eh${cfg.bgType==='solid'?' on':''}" onclick="setBgType('solid')">Sólida</button>
+      <button class="eh${cfg.bgType==='gradient'?' on':''}" onclick="setBgType('gradient')">Degradê</button>
     </div>
     <div id="bg-solid-opts" style="display:${cfg.bgType==='solid'?'block':'none'}">
-      <span class="sub-lbl">Presets</span><div class="bg-presets">${SOLID_P}</div>
-      <span class="sub-lbl">Personalizada</span>
-      <div class="color-row"><input class="color-hex" id="solid-hex" value="${cfg.solidColor}" oninput="setSolidCustom(this.value)"><div class="color-preview" id="solid-prev" style="background:${cfg.solidColor}" onclick="document.getElementById('solid-native').click()"></div><input type="color" id="solid-native" style="display:none;width:0;height:0;opacity:0" value="${cfg.solidColor}" oninput="setSolidFromNative(this.value)"></div>
+      <div class="bg-presets">${SOLID_P}</div>
+      <div class="color-row"><input class="color-hex" id="solid-hex" value="${cfg.solidColor}" oninput="setSolidCustom(this.value)"><div class="color-preview" id="solid-prev" style="background:${cfg.solidColor}" onclick="document.getElementById('solid-native').click()"></div><input type="color" id="solid-native" style="display:none" value="${cfg.solidColor}" oninput="setSolidFromNative(this.value)"></div>
     </div>
     <div id="bg-grad-opts" style="display:${cfg.bgType==='gradient'?'block':'none'}">
-      <span class="sub-lbl">Direção</span>
-      <div class="grad-dirs">
-        <button class="gd${cfg.gradDir==='to bottom'?' on':''}" onclick="setGradDir('to bottom')">▼ Baixo</button>
-        <button class="gd${cfg.gradDir==='to right'?' on':''}" onclick="setGradDir('to right')">▶ Dir.</button>
-        <button class="gd${cfg.gradDir==='135deg'?' on':''}" onclick="setGradDir('135deg')">↘ Diag.</button>
-        <button class="gd${cfg.gradDir==='45deg'?' on':''}" onclick="setGradDir('45deg')">↗ Diag.</button>
+       <div class="bg-presets">${GRAD_P}</div>
+       <div class="grad-dirs" style="margin-bottom:8px">
+        <button class="gd${cfg.gradDir==='to bottom'?' on':''}" onclick="setGradDir('to bottom')">▼</button>
+        <button class="gd${cfg.gradDir==='to right'?' on':''}" onclick="setGradDir('to right')">▶</button>
+        <button class="gd${cfg.gradDir==='135deg'?' on':''}" onclick="setGradDir('135deg')">↘</button>
+        <button class="gd${cfg.gradDir==='45deg'?' on':''}" onclick="setGradDir('45deg')">↗</button>
       </div>
-      <span class="sub-lbl">Cor inicial</span>
-      <div class="color-row"><input class="color-hex" id="grad-c1" value="${cfg.gradC1}" oninput="setGradColor(1,this.value)"><div class="color-preview" id="grad-p1" style="background:${cfg.gradC1}" onclick="document.getElementById('grad-n1').click()"></div><input type="color" id="grad-n1" style="display:none;width:0;height:0;opacity:0" value="${cfg.gradC1}" oninput="setGradFromNative(1,this.value)"></div>
-      <span class="sub-lbl">Cor final</span>
-      <div class="color-row"><input class="color-hex" id="grad-c2" value="${cfg.gradC2}" oninput="setGradColor(2,this.value)"><div class="color-preview" id="grad-p2" style="background:${cfg.gradC2}" onclick="document.getElementById('grad-n2').click()"></div><input type="color" id="grad-n2" style="display:none;width:0;height:0;opacity:0" value="${cfg.gradC2}" oninput="setGradFromNative(2,this.value)"></div>
-      <span class="sub-lbl">Presets</span><div class="bg-presets">${GRAD_P}</div>
     </div>
   </div></div>
-  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">@ Identidade</span><span class="sec-chev open">▾</span></div>
-  <div class="sec-body open">
-    <div class="tg-row"><span class="tg-lbl">Mostrar @</span><div class="tg${cfg.handleOn?' on':''}" id="handle-toggle" onclick="toggleHandle()"></div></div>
-    <span class="sub-lbl">Texto do @</span>
-    <input class="einp" value="${cfg.handle||'@seuarroba'}" oninput="setHandle(this.value)">
-  </div></div>
-  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Imagem de Fundo</span><span class="sec-chev">▾</span></div>
-  <div class="sec-body">
-    <input class="einp" id="img-ai-prompt" placeholder="Descreva a imagem IA (opcional)..." style="margin-bottom:6px">
-    <button class="esm" onclick="generateSlideImage()">✦ Gerar imagem com IA</button>
-    <div class="eup" onclick="toast('Upload em breve!')">Clique ou arraste<br><span style="font-size:9px">JPG, PNG, WebP</span></div>
-    <span class="sub-lbl">Modo de exibição</span>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px">
-      <button class="eh img-mode-btn${cfg.imgMode==='bg'?' on':''}" data-mode="bg" onclick="setImgMode('bg')">Fundo (cover)</button>
-      <button class="eh img-mode-btn${cfg.imgMode==='top'?' on':''}" data-mode="top" onclick="setImgMode('top')">Topo</button>
-      <button class="eh img-mode-btn${cfg.imgMode==='center'?' on':''}" data-mode="center" onclick="setImgMode('center')">Centro</button>
-      <button class="eh img-mode-btn${cfg.imgMode==='bottom'?' on':''}" data-mode="bottom" onclick="setImgMode('bottom')">Base</button>
-    </div>
-    <div class="row" style="margin-top:6px"><span class="row-lbl">Posição X</span><span class="row-val" id="vx">${cfg.imgX}</span></div>
-    <input type="range" class="sl" min="0" max="100" value="${cfg.imgX}" step="1" oninput="cfg.imgX=parseInt(this.value);document.getElementById('vx').textContent=this.value;updateSlides()">
-    <div class="row"><span class="row-lbl">Posição Y</span><span class="row-val" id="vy">${cfg.imgY}</span></div>
-    <input type="range" class="sl" min="0" max="100" value="${cfg.imgY}" step="1" oninput="cfg.imgY=parseInt(this.value);document.getElementById('vy').textContent=this.value;updateSlides()">
-    <div class="row"><span class="row-lbl">Zoom %</span><span class="row-val" id="vz">${cfg.imgZ}</span></div>
-    <input type="range" class="sl" min="50" max="300" value="${cfg.imgZ}" step="1" oninput="cfg.imgZ=parseInt(this.value);document.getElementById('vz').textContent=this.value;updateSlides()">
-  </div></div>
-  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Sombra / Overlay</span><span class="sec-chev">▾</span></div>
-  <div class="sec-body">
-    <select class="esel" onchange="cfg.overlayType=this.value;updateSlides()">
-      <option value="gradient"${cfg.overlayType==='gradient'?' selected':''}>Degradê Inferior</option>
-      <option value="top"${cfg.overlayType==='top'?' selected':''}>Topo Intenso (Duplo Degradê)</option>
-      <option value="full"${cfg.overlayType==='full'?' selected':''}>Sólida Translúcida</option>
-      <option value="none"${cfg.overlayType==='none'?' selected':''}>Nenhuma</option>
-    </select>
-    <div class="row"><span class="row-lbl">Opacidade</span><span class="row-val" id="vop">${cfg.overlayOp}</span></div>
-    <input type="range" class="sl" min="0" max="100" value="${cfg.overlayOp}" step="1" oninput="cfg.overlayOp=parseInt(this.value);document.getElementById('vop').textContent=this.value;updateSlides()">
-  </div></div>
-  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Grade de Fundo</span><span class="sec-chev">▾</span></div>
-  <div class="sec-body">
-    <div class="tg-row"><span class="tg-lbl">Exibir grade</span><div class="tg${cfg.gridOn?' on':''}" id="grid-tg" onclick="toggleGrid()"></div></div>
-    <div id="grid-opts" style="display:${cfg.gridOn?'block':'none'}">
-      <button class="eb${cfg.gridType==='none'?' on':''}" onclick="setGrid(this,'none')">Nenhuma</button>
-      <button class="eb${cfg.gridType==='quad'?' on':''}" onclick="setGrid(this,'quad')">Grade (quadriculado)</button>
-      <button class="eb${cfg.gridType==='dot'?' on':''}" onclick="setGrid(this,'dot')">Bolinhas</button>
-      <button class="eb${cfg.gridType==='hz'?' on':''}" onclick="setGrid(this,'hz')">Linhas horizontais</button>
-      <button class="eb${cfg.gridType==='diag'?' on':''}" onclick="setGrid(this,'diag')">Linhas diagonais</button>
-      <button class="eb${cfg.gridType==='xd'?' on':''}" onclick="setGrid(this,'xd')">Xadrez diagonal</button>
-      <span class="sub-lbl">Cor da grade</span>
-      <div class="color-row"><input class="color-hex" id="grid-hex" value="${cfg.gridColor}" oninput="cfg.gridColor=this.value;document.getElementById('grid-prev').style.background=this.value;updateSlides()"><div class="color-preview" id="grid-prev" style="background:${cfg.gridColor}"></div></div>
-      <div class="row"><span class="row-lbl">Opacidade</span><span class="row-val" id="vgop">10</span></div>
-      <input type="range" class="sl" min="2" max="40" value="10" step="1" oninput="document.getElementById('vgop').textContent=this.value;updateSlides()">
-    </div>
-  </div></div>
+
   <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Título & Subtítulo</span><span class="sec-chev open">▾</span></div>
   <div class="sec-body open">
-    <span class="sub-lbl" style="margin-top:0">Posição</span>
-    <div class="lg9" id="pos-grid">
-      <button class="lgb${cfg.textPos==='Sup. Esq.'?' on':''}" onclick="setPos('Sup. Esq.')">Sup. Esq.</button>
-      <button class="lgb${cfg.textPos==='Sup. Cen.'?' on':''}" onclick="setPos('Sup. Cen.')">Sup. Cen.</button>
-      <button class="lgb${cfg.textPos==='Sup. Dir.'?' on':''}" onclick="setPos('Sup. Dir.')">Sup. Dir.</button>
-      <button class="lgb${cfg.textPos==='Mei. Esq.'?' on':''}" onclick="setPos('Mei. Esq.')">Mei. Esq.</button>
-      <button class="lgb${cfg.textPos==='center'?' on':''}" onclick="setPos('center')">Meio</button>
-      <button class="lgb${cfg.textPos==='Mei. Dir.'?' on':''}" onclick="setPos('Mei. Dir.')">Mei. Dir.</button>
-      <button class="lgb${cfg.textPos==='Inf. Esq.'?' on':''}" onclick="setPos('Inf. Esq.')">Inf. Esq.</button>
-      <button class="lgb${cfg.textPos==='Inf. Cen.'?' on':''}" onclick="setPos('Inf. Cen.')">Inf. Cen.</button>
-      <button class="lgb${cfg.textPos==='Inf. Dir.'?' on':''}" onclick="setPos('Inf. Dir.')">Inf. Dir.</button>
+    <span class="sub-lbl" style="margin-top:0">Conteúdo</span>
+    <textarea class="eta" rows="2" oninput="slides[curSl].t=this.value;updateSlides()" placeholder="Título principal">${slides[curSl]?.t||''}</textarea>
+    <textarea class="eta" rows="3" oninput="slides[curSl].b=this.value;updateSlides()" placeholder="Descrição/Subtítulo">${slides[curSl]?.b||''}</textarea>
+    
+    <span class="sub-lbl">Alinhamento do Texto</span>
+    <div class="e3" style="margin-bottom:10px">
+      <button class="eh${cfg.textAlign==='left'?' on':''}" onclick="cfg.textAlign='left';updateSlides();renderEditorSide()">Esq.</button>
+      <button class="eh${cfg.textAlign==='center'?' on':''}" onclick="cfg.textAlign='center';updateSlides();renderEditorSide()">Centro</button>
+      <button class="eh${cfg.textAlign==='right'?' on':''}" onclick="cfg.textAlign='right';updateSlides();renderEditorSide()">Dir.</button>
     </div>
-    <span class="sub-lbl">Alinhamento</span>
-    <div class="e3" id="align-btns" style="margin-bottom:8px">
-      <button class="eh${cfg.textAlign==='left'?' on':''}" onclick="setAlign('left')">Esq.</button>
-      <button class="eh${cfg.textAlign==='center'?' on':''}" onclick="setAlign('center')">Centro</button>
-      <button class="eh${cfg.textAlign==='right'?' on':''}" onclick="setAlign('right')">Dir.</button>
-    </div>
-    <span class="sub-lbl">Respiro interno (px)</span>
-    <div class="row"><span class="row-lbl">Padding horizontal</span><span class="row-val" id="vph">${cfg.paddingH}</span></div>
-    <input type="range" class="sl" min="0" max="100" value="${cfg.paddingH}" step="1" oninput="cfg.paddingH=parseInt(this.value);document.getElementById('vph').textContent=this.value;updateSlides()">
-    <div class="row"><span class="row-lbl">Padding vertical</span><span class="row-val" id="vpv">${cfg.paddingV}</span></div>
-    <input type="range" class="sl" min="0" max="100" value="${cfg.paddingV}" step="1" oninput="cfg.paddingV=parseInt(this.value);document.getElementById('vpv').textContent=this.value;updateSlides()">
-    <div class="row"><span class="row-lbl">Margem das bordas</span><span class="row-val" id="vmg">${cfg.margin}</span></div>
-    <input type="range" class="sl" min="0" max="80" value="${cfg.margin}" step="1" oninput="cfg.margin=parseInt(this.value);document.getElementById('vmg').textContent=this.value;updateSlides()">
-    <span class="sub-lbl">Cor do título</span>
-    <div class="cpick">${PAL}</div>
-    <div class="color-row"><input class="color-hex" id="title-hex" value="${cfg.titleColor}" oninput="setCfgC('titleColor',this.value,'title-prev',null)"><div class="color-preview" id="title-prev" style="background:${cfg.titleColor}" onclick="document.getElementById('title-native').click()"></div><input type="color" id="title-native" style="display:none;width:0;height:0;opacity:0" value="${cfg.titleColor}" oninput="setCfgC('titleColor',this.value,'title-prev','title-hex')"></div>
-    <span class="sub-lbl">Cor do subtítulo</span>
-    <div class="cpick">${PAL2}</div>
-    <div class="color-row"><input class="color-hex" id="sub-hex" value="${cfg.subColor}" oninput="setCfgC('subColor',this.value,'sub-prev',null)"><div class="color-preview" id="sub-prev" style="background:${cfg.subColor}" onclick="document.getElementById('sub-native').click()"></div><input type="color" id="sub-native" style="display:none;width:0;height:0;opacity:0" value="${cfg.subColor}" oninput="setCfgC('subColor',this.value,'sub-prev','sub-hex')"></div>
-    <span class="sub-lbl">Título</span>
-    <textarea class="eta" rows="2" id="ed-ttl" oninput="slides[curSl].t=this.value;updateSlides()">${slides[curSl]?.t||''}</textarea>
-    <span class="sub-lbl">Subtítulo</span>
-    <textarea class="eta" rows="3" id="ed-sub" oninput="slides[curSl].b=this.value;updateSlides()">${slides[curSl]?.b||''}</textarea>
-    <button class="eref" onclick="refineSlide()">✦ Refinar este slide com IA</button>
+    <span class="sub-lbl">Cor do Título</span>
+    <div class="color-row"><input class="color-hex" id="title-hex" value="${cfg.titleColor}" oninput="setCfgC('titleColor',this.value,'title-prev')"><div class="color-preview" id="title-prev" style="background:${cfg.titleColor}" onclick="document.getElementById('title-native-pick').click()"></div><input type="color" style="display:none" id="title-native-pick" value="${cfg.titleColor}" oninput="setCfgC('titleColor',this.value,'title-prev','title-hex')"></div>
+    <div class="cpal">${PAL}</div>
   </div></div>
-  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Botão CTA</span><span class="sec-chev open">▾</span></div>
+
+  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Imagem do Slide</span><span class="sec-chev open">▾</span></div>
   <div class="sec-body open">
-    <div class="tg-row"><span class="tg-lbl">Exibir botão CTA</span><div class="tg${cfg.ctaOn?' on':''}" id="cta-toggle" onclick="toggleCTA()"></div></div>
-    <div id="cta-opts" style="display:${cfg.ctaOn?'block':'none'}">
-      <span class="sub-lbl">Texto</span><input class="einp" id="cta-text" value="${cfg.ctaText}" oninput="cfg.ctaText=this.value;updateSlides()">
-      <span class="sub-lbl">Estilo</span>
-      <div class="e2" style="margin-bottom:8px"><button class="eh${cfg.ctaStyle==='solid'?' on':''}" id="cta-solid" onclick="setCTAStyle('solid')">Preenchido</button><button class="eh${cfg.ctaStyle==='outline'?' on':''}" id="cta-outline" onclick="setCTAStyle('outline')">Contorno</button></div>
+    <button class="esm" onclick="generateSlideImage()">✦ Gerar imagem com IA</button>
+    <div class="eup" onclick="document.getElementById('up-real').click()">Upload de Imagem<br><span style="font-size:9px">Clique para selecionar</span></div>
+    <input type="file" id="up-real" style="display:none" accept="image/*" onchange="handleUpload(this)">
+    
+    <span class="sub-lbl">Modo de Exibição</span>
+    <div class="e2" style="margin-bottom:8px">
+      <button class="eh${cfg.imgMode==='bg'?' on':''}" onclick="setImgMode('bg')">Fundo (Cheio)</button>
+      <button class="eh${cfg.imgMode==='block'?' on':''}" onclick="setImgMode('block')">Bloco (Imagem)</button>
+    </div>
+    
+    <div style="display:${cfg.imgMode==='bg'?'block':'none'}">
+      <div class="row"><span class="row-lbl">Zoom</span><span class="row-val">${cfg.imgZ}%</span></div>
+      <input type="range" class="sl" min="100" max="300" value="${cfg.imgZ}" oninput="cfg.imgZ=parseInt(this.value);updateSlides();renderEditorSide()">
+      <div class="row"><span class="row-lbl">Posição X</span><span class="row-val">${cfg.imgX}%</span></div>
+      <input type="range" class="sl" min="0" max="100" value="${cfg.imgX}" oninput="cfg.imgX=parseInt(this.value);updateSlides()">
+      <div class="row"><span class="row-lbl">Posição Y</span><span class="row-val">${cfg.imgY}%</span></div>
+      <input type="range" class="sl" min="0" max="100" value="${cfg.imgY}" oninput="cfg.imgY=parseInt(this.value);updateSlides()">
+    </div>
+
+    <div style="display:${cfg.imgMode==='block'?'block':'none'}">
+       <span class="sub-lbl">Proporção do Bloco</span>
+       <div class="e2" style="margin-bottom:10px">
+        <button class="eh${cfg.imgRatio==='4:5'?' on':''}" onclick="cfg.imgRatio='4:5';updateSlides();renderEditorSide()">4:5 (Insta)</button>
+        <button class="eh${cfg.imgRatio==='16:9'?' on':''}" onclick="cfg.imgRatio='16:9';updateSlides();renderEditorSide()">16:9 (Wide)</button>
+       </div>
+       <span class="sub-lbl">Alinhamento</span>
+       <div class="lg9">
+         ${['top-left', 'top-center', 'top-right', 'center-left', 'center-center', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right'].map(pos => {
+           const [v, h] = pos.split('-');
+           const active = cfg.imgAlignV === v && cfg.imgAlignH === h;
+           return `<div class="lgb${active?' on':''}" onclick="cfg.imgAlignV='${v}';cfg.imgAlignH='${h}';updateSlides();renderEditorSide()"></div>`;
+         }).join('')}
+       </div>
+       <div style="text-align:center;font-size:9px;color:var(--mu2);margin-top:2px">${cfg.imgAlignV} / ${cfg.imgAlignH}</div>
+    </div>
+  </div></div>
+
+  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Botão CTA</span><span class="sec-chev">▾</span></div>
+  <div class="sec-body">
+    <div class="tg-row"><span class="tg-lbl">Ativar Botão</span><div class="tg${cfg.ctaOn?' on':''}" onclick="toggleCTA()"></div></div>
+    <div style="display:${cfg.ctaOn?'block':'none'}">
+      <input class="einp" value="${cfg.ctaText}" oninput="cfg.ctaText=this.value;updateSlides()">
+      <span class="sub-lbl">Alinhamento</span>
+      <div class="e3">
+        <button class="eh${cfg.ctaAlign==='left'?' on':''}" onclick="cfg.ctaAlign='left';updateSlides();renderEditorSide()">Esq</button>
+        <button class="eh${cfg.ctaAlign==='center'?' on':''}" onclick="cfg.ctaAlign='center';updateSlides();renderEditorSide()">Meio</button>
+        <button class="eh${cfg.ctaAlign==='right'?' on':''}" onclick="cfg.ctaAlign='right';updateSlides();renderEditorSide()">Dir</button>
+      </div>
       <span class="sub-lbl">Cor</span>
-      <div class="cpick">${PAL3}</div>
-      <div class="color-row"><input class="color-hex" id="cta-hex" value="${cfg.ctaColor}" oninput="setCfgC('ctaColor',this.value,'cta-prev',null)"><div class="color-preview" id="cta-prev" style="background:${cfg.ctaColor}" onclick="document.getElementById('cta-native').click()"></div><input type="color" id="cta-native" style="display:none;width:0;height:0;opacity:0" value="${cfg.ctaColor}" oninput="setCfgC('ctaColor',this.value,'cta-prev','cta-hex')"></div>
-      <span class="sub-lbl">Alinhamento</span>
-      <div class="e3" style="margin-bottom:0"><button class="eh${cfg.ctaAlign==='left'?' on':''}" id="cta-al-l" onclick="setCTAAlign('left')">Esq.</button><button class="eh${cfg.ctaAlign==='center'?' on':''}" id="cta-al-c" onclick="setCTAAlign('center')">Centro</button><button class="eh${cfg.ctaAlign==='right'?' on':''}" id="cta-al-r" onclick="setCTAAlign('right')">Dir.</button></div>
+      <div class="cpal">${PAL3}</div>
     </div>
   </div></div>
-  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Logo da Empresa</span><span class="sec-chev open">▾</span></div>
-  <div class="sec-body open">
-    <div class="tg-row"><span class="tg-lbl">Exibir logo</span><div class="tg${cfg.logoOn?' on':''}" id="logo-toggle" onclick="toggleLogo()"></div></div>
-    <div id="logo-opts" style="display:${cfg.logoOn?'block':'none'}">
-      <div class="eup" onclick="toast('Upload de logo — integre file input em produção')">Enviar logo<br><span style="font-size:9px">PNG com fundo transparente</span></div>
-      <span class="sub-lbl">Posição</span>
-      <div class="e2" style="margin-bottom:6px"><button class="eh${cfg.logoPos==='top'?' on':''}" id="logo-top" onclick="setLogoPos('top')">Topo</button><button class="eh${cfg.logoPos==='bottom'?' on':''}" id="logo-bot" onclick="setLogoPos('bottom')">Rodapé</button></div>
-      <span class="sub-lbl">Alinhamento</span>
+
+  <div class="sec"><div class="sec-hd" onclick="tog(this)"><span class="sec-lbl">Sombra & Grade</span><span class="sec-chev">▾</span></div>
+  <div class="sec-body">
+    <div class="row"><span class="row-lbl">Sombra Overlay</span><span class="row-val">${cfg.overlayOp}%</span></div>
+    <input type="range" class="sl" min="0" max="100" value="${cfg.overlayOp}" oninput="cfg.overlayOp=parseInt(this.value);updateSlides()">
+    <div class="tg-row" style="margin-top:10px"><span class="tg-lbl">Grade de Fundo</span><div class="tg${cfg.gridOn?' on':''}" onclick="toggleGrid()"></div></div>
+  </div></div>
+  `;
+}
+
+function handleUpload(el) {
+  const file = el.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    cfg.imageUrl = e.target.result;
+    slides[curSl].imageLoading = false;
+    updateSlides();
+  };
+  reader.readAsDataURL(file);
+}
+
       <div class="e3" style="margin-bottom:8px"><button class="eh${cfg.logoAlign==='left'?' on':''}" id="logo-al-l" onclick="setLogoAlign('left')">Esq.</button><button class="eh${cfg.logoAlign==='center'?' on':''}" id="logo-al-c" onclick="setLogoAlign('center')">Centro</button><button class="eh${cfg.logoAlign==='right'?' on':''}" id="logo-al-r" onclick="setLogoAlign('right')">Dir.</button></div>
       <div class="row"><span class="row-lbl">Tamanho</span><span class="row-val" id="vls">28</span></div>
       <input type="range" class="sl" min="12" max="56" value="28" step="1" oninput="document.getElementById('vls').textContent=this.value;updateSlides()">
@@ -1113,34 +1183,17 @@ function swBtn(el) {
 // ── STYLE / THEME ──────────────────────────────────────────────────
 function setStyle(type) {
   cfg.style = type;
-  document.getElementById('e-min')?.classList.toggle('on', type === 'minimal');
-  document.getElementById('e-pro')?.classList.toggle('on', type === 'profile');
-  // Profile adds round avatar placeholder at top; minimal is clean text
+function setStyle(type) {
+  globalCfg.style = type;
   updateSlides();
-}
-
-function setTheme(theme) {
-  cfg.theme = theme;
-  if (theme === 'dark') {
-    if (cfg.bgType === 'none') { /* keep none but default bg goes dark */ }
-    if (cfg.bgType === 'solid') { cfg.solidColor = '#0f0520'; const h=document.getElementById('solid-hex'),p=document.getElementById('solid-prev'); if(h)h.value=cfg.solidColor; if(p)p.style.background=cfg.solidColor; }
-  } else {
-    if (cfg.bgType === 'none') { /* keep none, white bg */ }
-    if (cfg.bgType === 'solid') { cfg.solidColor = '#ffffff'; const h=document.getElementById('solid-hex'),p=document.getElementById('solid-prev'); if(h)h.value=cfg.solidColor; if(p)p.style.background=cfg.solidColor; }
-    cfg.titleColor = '#111111';
-    cfg.subColor = '#444444';
-  }
-  updateSlides();
+  renderEditorSide();
 }
 
 // ── BACKGROUND COLOR ───────────────────────────────────────────────
 function setBgType(t) {
   cfg.bgType = t;
-  ['none','solid','gradient'].forEach(x => document.getElementById('bg-'+x+'-btn')?.classList.toggle('on', x===t));
-  const so = document.getElementById('bg-solid-opts'), go = document.getElementById('bg-grad-opts');
-  if (so) so.style.display = t==='solid' ? 'block' : 'none';
-  if (go) go.style.display = t==='gradient' ? 'block' : 'none';
   updateSlides();
+  renderEditorSide();
 }
 
 function selectSolid(c) {
@@ -1193,43 +1246,45 @@ function selectGradPreset(c1, c2) {
 }
 
 // ── COLOR PICKER (title, subtitle, CTA) ───────────────────────────
-function setCfgC(key, color, prevId, hexId) {
+function setCfgC(key, color) {
   cfg[key] = color;
-  const p = document.getElementById(prevId);
-  if (p) p.style.background = color;
-  if (hexId) { const h = document.getElementById(hexId); if (h) h.value = color; }
   updateSlides();
+  renderEditorSide();
 }
 
-// ── IMAGE POSITION ─────────────────────────────────────────────────
-function setImgPos(x, y, z) {
-  cfg.imgX = parseInt(x); cfg.imgY = parseInt(y); cfg.imgZ = parseInt(z);
+function selectSolid(c) {
+  cfg.solidColor = c;
   updateSlides();
+  renderEditorSide();
 }
 
+function selectGradPreset(c1, c2) {
+  cfg.gradC1 = c1; cfg.gradC2 = c2;
+  updateSlides();
+  renderEditorSide();
+}
+
+function setGradDir(d) {
+  cfg.gradDir = d;
+  updateSlides();
+  renderEditorSide();
+}
+
+// ── IMAGE POSITION & MODE ──────────────────────────────────────────
 function setImgMode(mode) {
-  cfg.imgMode = mode; // 'bg' | 'top' | 'bottom' | 'center'
-  document.querySelectorAll('.img-mode-btn').forEach(b => b.classList.remove('on'));
-  document.querySelector(`.img-mode-btn[data-mode="${mode}"]`)?.classList.add('on');
+  cfg.imgMode = mode;
   updateSlides();
+  renderEditorSide();
 }
 
-// ── AI IMAGE WITH LOADING STATE ────────────────────────────────────
 async function generateSlideImage() {
-  const prompt = document.getElementById('ed-ttl')?.value || slides[curSl]?.t || '';
-  const extraPrompt = document.getElementById('img-ai-prompt')?.value?.trim() || '';
-  const fullPrompt = extraPrompt ? `${prompt}, ${extraPrompt}` : `${prompt}, high quality, digital art, cinematic, instagram post`;
-
-  // Show loading state on card
+  const prompt = slides[curSl]?.t || '';
+  const fullPrompt = `${prompt}, professional photography, high quality, clean background`;
   slides[curSl].imageLoading = true;
-  slides[curSl].imageUrl = null;
   updateSlides();
   toast('⏳ Gerando imagem com IA...');
-
   const seed = Math.floor(Math.random() * 999999);
   const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=1080&height=1350&seed=${seed}&model=flux&nologo=true`;
-
-  // Preload image before showing
   const img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = () => {
@@ -1241,113 +1296,67 @@ async function generateSlideImage() {
   img.onerror = () => {
     slides[curSl].imageLoading = false;
     updateSlides();
-    toast('❌ Erro ao gerar imagem. Tente novamente.', true);
+    toast('❌ Erro ao gerar imagem.', true);
   };
   img.src = url;
 }
 
-// ── GRID ────────────────────────────────────────────────────────────
-function toggleGrid() {
-  cfg.gridOn = !cfg.gridOn;
-  const t = document.getElementById('grid-tg'), o = document.getElementById('grid-opts');
-  if (t) t.classList.toggle('on', cfg.gridOn);
-  if (o) o.style.display = cfg.gridOn ? 'block' : 'none';
+// ── TOGGLES ──────────────────────────────────────────────────────────
+function toggleHandle() {
+  globalCfg.handleOn = !globalCfg.handleOn;
+  updateSlides();
+  renderEditorSide();
+}
+
+function setHandle(v) {
+  globalCfg.handle = v;
   updateSlides();
 }
 
-function setGrid(btn, type) {
-  cfg.gridType = type;
-  btn.closest('div')?.querySelectorAll('.eb').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  updateSlides();
-}
-
-// ── CTA ─────────────────────────────────────────────────────────────
 function toggleCTA() {
   cfg.ctaOn = !cfg.ctaOn;
-  const t = document.getElementById('cta-toggle'), o = document.getElementById('cta-opts');
-  if (t) t.classList.toggle('on', cfg.ctaOn);
-  if (o) o.style.display = cfg.ctaOn ? 'block' : 'none';
   updateSlides();
+  renderEditorSide();
 }
 
+function toggleGrid() {
+  cfg.gridOn = !cfg.gridOn;
+  updateSlides();
+  renderEditorSide();
+}
+
+function toggleLogo() {
+  globalCfg.logoOn = !globalCfg.logoOn;
+  updateSlides();
+  renderEditorSide();
+}
+
+// ── CTA SPECIFIC ──────────────────────────────────────────────────────
 function setCTAStyle(s) {
   cfg.ctaStyle = s;
-  document.getElementById('cta-solid')?.classList.toggle('on', s==='solid');
-  document.getElementById('cta-outline')?.classList.toggle('on', s==='outline');
   updateSlides();
+  renderEditorSide();
 }
 
 function setCTAAlign(a) {
   cfg.ctaAlign = a;
-  ['l','c','r'].forEach(x => document.getElementById('cta-al-'+x)?.classList.remove('on'));
-  document.getElementById('cta-al-'+a[0])?.classList.add('on');
   updateSlides();
+  renderEditorSide();
 }
 
-// ── @ HANDLE ────────────────────────────────────────────────────────
-function setHandle(val) {
-  cfg.handle = val;
-  updateSlides();
-}
-
-function toggleHandle() {
-  cfg.handleOn = !cfg.handleOn;
-  const t = document.getElementById('handle-toggle');
-  if (t) t.classList.toggle('on', cfg.handleOn);
-  updateSlides();
-}
-
-// ── LOGO ─────────────────────────────────────────────────────────────
-function toggleLogo() {
-  cfg.logoOn = !cfg.logoOn;
-  const t = document.getElementById('logo-toggle'), o = document.getElementById('logo-opts');
-  if (t) t.classList.toggle('on', cfg.logoOn);
-  if (o) o.style.display = cfg.logoOn ? 'block' : 'none';
-  updateSlides();
-}
-
-function setLogoPos(p) {
-  cfg.logoPos = p;
-  document.getElementById('logo-top')?.classList.toggle('on', p==='top');
-  document.getElementById('logo-bot')?.classList.toggle('on', p==='bottom');
-  updateSlides();
-}
-
-function setLogoAlign(a) {
-  cfg.logoAlign = a;
-  ['l','c','r'].forEach(x => document.getElementById('logo-al-'+x)?.classList.remove('on'));
-  document.getElementById('logo-al-'+a[0])?.classList.add('on');
-  updateSlides();
-}
-
-// ── POSITION & ALIGN ─────────────────────────────────────────────────
-function setPos(p) {
+// ── ALIGNMENT & POSITION ──────────────────────────────────────────────
+function setTextPos(p) {
   cfg.textPos = p;
-  document.querySelectorAll('#pos-grid .lgb').forEach(b => {
-    const label = b.textContent.trim();
-    const match = p === 'center' ? label === 'Meio' : label === p;
-    b.classList.toggle('on', match);
-  });
   updateSlides();
+  renderEditorSide();
 }
-
-function setAlign(a) {
-  cfg.textAlign = a;
-  const map = { left: 'Esq.', center: 'Centro', right: 'Dir.' };
-  document.querySelectorAll('#align-btns .eh').forEach(b => {
-    b.classList.toggle('on', b.textContent.trim() === map[a]);
-  });
-  updateSlides();
-}
-
 
 async function refineSlide() {
-  const title = document.getElementById('ed-ttl')?.value;
-  const body = document.getElementById('ed-sub')?.value;
-  const instruction = prompt('O que deseja refinar neste slide? (ex: deixe mais curto, mais persuasivo, mais direto)');
+  const title = slides[curSl]?.t;
+  const body = slides[curSl]?.b;
+  const instruction = prompt('O que deseja refinar neste slide?');
   if (!instruction) return;
-  toast('Refinando slide com IA...');
+  toast('Refinando com IA...');
   try {
     const r = await fetch(`${API}/generate/refine-slide`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer '+token },
@@ -1356,9 +1365,7 @@ async function refineSlide() {
     const d = await r.json();
     if (r.ok && d.title) {
       slides[curSl].t = d.title; slides[curSl].b = d.body;
-      const ttl = document.getElementById('ed-ttl'); if(ttl) ttl.value = d.title;
-      const sub = document.getElementById('ed-sub'); if(sub) sub.value = d.body;
-      updateSlides(); toast('Slide refinado!');
+      updateSlides(); renderEditorSide(); toast('Slide refinado!');
     } else toast(d.error || 'Erro ao refinar.', true);
   } catch { toast('Sem conexão com o backend.', true); }
 }
