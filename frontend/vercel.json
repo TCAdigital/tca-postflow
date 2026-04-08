@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://sua-url-do-backend-no-render-ou-railway.com/api/$1"
+      "destination": "https://tca-postflow-api.onrender.com/api/$1"
     }
   ]
 }
